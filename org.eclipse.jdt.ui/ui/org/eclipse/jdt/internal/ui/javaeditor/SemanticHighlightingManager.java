@@ -310,16 +310,36 @@ public class SemanticHighlightingManager implements IPropertyChangeListener {
 	}
 
 	/**
+	 * Create semantic highlighting presenter instance to use.
+	 *
+	 * @return semantic highlighting presenter to use
+	 * @since 3.28
+	 */
+	protected SemanticHighlightingPresenter createSemanticHighlightingPresenter() {
+		return new SemanticHighlightingPresenter();
+	}
+
+	/**
+	 * Create semantic highlighting reconciler instance to use.
+	 *
+	 * @return semantic highlighting reconciler to use
+	 * @since 3.28
+	 */
+	protected SemanticHighlightingReconciler createSemanticHighlightingReconciler() {
+		return new SemanticHighlightingReconciler();
+	}
+
+	/**
 	 * Enable semantic highlighting.
 	 */
 	private void enable() {
 		initializeHighlightings();
 
-		fPresenter= new SemanticHighlightingPresenter();
+		fPresenter= createSemanticHighlightingPresenter();
 		fPresenter.install(fSourceViewer, fPresentationReconciler);
 
 		if (fEditor != null) {
-			fReconciler= new SemanticHighlightingReconciler();
+			fReconciler= createSemanticHighlightingReconciler();
 			fReconciler.install(fEditor, fSourceViewer, fPresenter, fSemanticHighlightings, fHighlightings);
 		} else {
 			fPresenter.updatePresentation(null, createHardcodedPositions(), new HighlightedPosition[0]);

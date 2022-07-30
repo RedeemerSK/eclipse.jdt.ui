@@ -2178,6 +2178,16 @@ public class PreferenceConstants {
 	public final static String EDITOR_JAVADOC_DEFAULT_UNDERLINE= IJavaColorConstants.JAVADOC_DEFAULT + EDITOR_UNDERLINE_SUFFIX;
 
 	/**
+	 * A named preference that controls whether full semantic syntax coloring is used in Java source hover viewer
+	 * <p>
+	 * Value is of type <code>Boolean</code>.
+	 * </p>
+	 *
+	 * @since 3.28
+	 */
+	public final static String EDITOR_SOURCE_HOVER_SEMANTIC_COLORING= "sourceHoverSemanticColoring"; //$NON-NLS-1$
+
+	/**
 	 * A named preference that holds the color used for 'linked-mode' underline.
 	 * <p>
 	 * Value is of type <code>String</code>. A RGB color value encoded as a string
@@ -4251,6 +4261,7 @@ public class PreferenceConstants {
 
 		// semantic highlighting
 		SemanticHighlightings.initDefaults(store);
+		store.setDefault(PreferenceConstants.EDITOR_SOURCE_HOVER_SEMANTIC_COLORING, true);
 
 		// do more complicated stuff
 		NewJavaProjectPreferencePage.initDefaults(store);

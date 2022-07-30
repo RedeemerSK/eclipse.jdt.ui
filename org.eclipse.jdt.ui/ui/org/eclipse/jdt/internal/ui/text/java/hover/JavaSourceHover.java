@@ -14,6 +14,10 @@
 package org.eclipse.jdt.internal.ui.text.java.hover;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.stream.IntStream;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.SWTException;
@@ -33,6 +37,8 @@ import org.eclipse.jface.text.IInformationControlCreator;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.ITextViewer;
 import org.eclipse.jface.text.ITypedRegion;
+import org.eclipse.jface.text.Region;
+import org.eclipse.jface.text.source.SourceViewer;
 
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.part.IWorkbenchPartOrientation;
@@ -43,10 +49,12 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.ILocalVariable;
 import org.eclipse.jdt.core.IMember;
+import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.ISourceReference;
 import org.eclipse.jdt.core.ITypeParameter;
 import org.eclipse.jdt.core.ITypeRoot;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.SourceRange;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.BodyDeclaration;
@@ -103,6 +111,20 @@ public class JavaSourceHover extends AbstractJavaEditorTextHover {
 	 */
 	private IJavaElement fJavaElement;
 
+	/**
+	 * Source range of hovered node within it's origin source content
+	 *
+	 * @since 3.28
+	 */
+	private ISourceRange fNodeRange;
+
+	/**
+	 * Lines of bracket-type node's content to keep not skipped in hover viewer
+	 *
+	 * @since 3.28
+	 */
+	private List<Integer> fKeptLines;
+
 	static class JavaSourceInformationInput {
 		private IJavaElement fElement;
 
@@ -122,16 +144,307 @@ public class JavaSourceHover extends AbstractJavaEditorTextHover {
 		}
 	}
 
+	/**
+	 * Java source information input supporting semantic coloring
+	 *
+	 * @since 3.28
+	 */
+	static abstract class JavaSourceSemanticInformationInput extends JavaSourceInformationInput {
+		final ISourceRange fVisibleRange;
+		SourceViewer fSourceViewer;
+
+		JavaSourceSemanticInformationInput(IJavaElement javaElement, String hoverInfo, ISourceRange visibleRange) {
+			super(javaElement, hoverInfo);
+			fVisibleRange= visibleRange;
+		}
+
+		public void init(JavaEditor javaEditor, SourceViewer sourceViewer) {
+			fSourceViewer= sourceViewer;
+		}
+
+		public abstract ITypeRoot getViewerContentTypeRoot();
+
+		abstract String getViewerContent();
+
+		public boolean isSemanticColoring() {
+			if (fVisibleRange == null) {
+				return false;
+			}
+
+			// replace viewer content (was getHoverInfo()) with full content (for which semantic coloring will be prepared) and set viewer's visible region
+			fSourceViewer.getDocument().set(getViewerContent());
+			prepareVisibleRegion();
+			return true;
+		}
+
+		void prepareVisibleRegion() {
+			// limit visible region of whole source content
+			fSourceViewer.setVisibleRegion(fVisibleRange.getOffset(), fVisibleRange.getLength());
+		}
+
+		public abstract void postSemanticColoring();
+	}
+
+	/**
+	 * Java source information input supporting semantic coloring and line trimming in hover viewer's visible content
+	 *
+	 * @since 3.28
+	 */
+	static abstract class JavaSourceLineTrimmingInformationInput extends JavaSourceSemanticInformationInput {
+		ITypeRoot fRootElement;
+		private List<IRegion> fTrimRegions;
+
+		JavaSourceLineTrimmingInformationInput(IJavaElement javaElement, String hoverInfo, ITypeRoot rootElement, ISourceRange visibleRange) {
+			super(javaElement, hoverInfo, visibleRange);
+			fRootElement= rootElement;
+		}
+
+		@Override
+		void prepareVisibleRegion() {
+			super.prepareVisibleRegion();
+
+			// prepare lines trimming in visible region
+			fTrimRegions= new LinkedList<>();
+			try {
+				IDocument document= fSourceViewer.getDocument();
+				IRegion visibleRegion= fSourceViewer.getVisibleRegion(); // fVisibleRange extended to start of 1st line
+				String hoverElementSource= document.get(visibleRegion.getOffset(), visibleRegion.getLength());
+				String[] sourceLines= Strings.convertIntoLines(hoverElementSource);
+				String[] trimmedLines= sourceLines.clone();
+				Strings.trimIndentation(trimmedLines, getViewerContentTypeRoot().getJavaProject());
+				int line= document.getLineOfOffset(visibleRegion.getOffset());
+				int offsetShift= 0;
+				for (int i= 0; i < sourceLines.length; i++) {
+					int trimChars= sourceLines[i].indexOf(trimmedLines[i]);
+					if (trimChars > 0) {
+						fTrimRegions.add(new Region(document.getLineOffset(line) - offsetShift, trimChars));
+						offsetShift+= trimChars;
+					}
+					line++;
+				}
+			} catch (BadLocationException ignored) {}
+		}
+
+		@Override
+		public void postSemanticColoring() {
+			if (fTrimRegions == null) {
+				return;
+			}
+			// apply lines trimming in visible region
+			try {
+				for (IRegion trimRegion : fTrimRegions) {
+					fSourceViewer.getDocument().replace(trimRegion.getOffset(), trimRegion.getLength(), ""); //$NON-NLS-1$
+				}
+			} catch (BadLocationException ignored) {}
+		}
+	}
+
+	/**
+	 * Java source information input supporting semantic coloring for java elements hover
+	 *
+	 * @since 3.28
+	 */
+	static class JavaElementSourceInformationInput extends JavaSourceLineTrimmingInformationInput {
+		private final String fContent;
+
+		JavaElementSourceInformationInput(String hoverInfo, IJavaElement javaElement) throws Exception {
+			super(javaElement, hoverInfo, null,
+					(javaElement instanceof ISourceReference) ? ((ISourceReference) javaElement).getSourceRange() : null);
+
+			IJavaElement parent= javaElement;
+			while (parent != null && !(parent instanceof ITypeRoot)) {
+				parent= parent.getParent();
+			}
+			if (!(parent instanceof ITypeRoot)) {
+				throw new Exception();
+			}
+			fRootElement= (ITypeRoot) parent;
+			fContent= fRootElement.getSource();
+		}
+
+		@Override
+		public ITypeRoot getViewerContentTypeRoot() {
+			return fRootElement;
+		}
+
+		@Override
+		public String getViewerContent() {
+			return fContent;
+		}
+
+		@Override
+		void prepareVisibleRegion() {
+			// set range indication to actual beginning of element ('scrolls' past any javadoc if present) before setting visible region
+			Document doc= (Document) fSourceViewer.getDocument();
+			int offset= fVisibleRange.getOffset();
+			int lenght= fVisibleRange.getLength();
+			try {
+				ITypedRegion partition= null;
+				int endOffset= offset + lenght;
+				while (offset < endOffset) { // we should never reach end of visible range
+					partition= doc.getPartition(IJavaPartitions.JAVA_PARTITIONING, offset, false);
+					switch (partition.getType()) {
+						case IJavaPartitions.JAVA_DOC:
+						case IJavaPartitions.JAVA_SINGLE_LINE_COMMENT:
+						case IJavaPartitions.JAVA_MULTI_LINE_COMMENT:
+							offset+= partition.getLength();
+							lenght-= partition.getLength();
+							break;
+						default:
+							endOffset= offset; // break out from loop
+							break;
+					}
+				}
+				while (Character.isWhitespace(doc.getChar(offset))) {
+					offset++;
+					lenght--;
+				}
+			} catch (Exception ignored) {
+				offset= fVisibleRange.getOffset();
+				lenght= fVisibleRange.getLength();
+			}
+			fSourceViewer.setRangeIndication(offset, lenght, true);
+
+			super.prepareVisibleRegion();
+		}
+	}
+
+	/**
+	 * Java source information input supporting semantic coloring for bracket nodes hover
+	 *
+	 * @since 3.28
+	 */
+	static class JavaBracketSourceInformationInput extends JavaSourceLineTrimmingInformationInput {
+		private String fContent;
+		private final int fBracketHoverRegionFirstLine;
+		private final int fBacketHoverRegionLastLine;
+		private final List<Integer> fKeptLines;
+
+		JavaBracketSourceInformationInput(String hoverInfo, IDocument document, ISourceRange nodeRange, List<Integer> keptLines) throws BadLocationException {
+			super(null, hoverInfo, null, nodeRange);
+			fBracketHoverRegionFirstLine= document.getLineOfOffset(nodeRange.getOffset());
+			fBacketHoverRegionLastLine= document.getLineOfOffset(nodeRange.getOffset() + nodeRange.getLength());
+			fKeptLines= new LinkedList<>(keptLines);
+		}
+
+		@Override
+		public void init(JavaEditor javaEditor, SourceViewer sourceViewer) {
+			super.init(javaEditor, sourceViewer);
+			fRootElement= EditorUtility.getEditorInputJavaElement(javaEditor, false);
+			fContent= javaEditor.getViewer().getDocument().get();
+		}
+
+		@Override
+		public ITypeRoot getViewerContentTypeRoot() {
+			return fRootElement;
+		}
+
+		@Override
+		public String getViewerContent() {
+			return fContent;
+		}
+
+		@Override
+		public void postSemanticColoring() {
+			super.postSemanticColoring();
+
+			// apply skipped lines substitutions
+			if (fKeptLines != null && !fKeptLines.isEmpty()) {
+				List<Integer> keptLines= new LinkedList<>(fKeptLines);
+				IDocument document= fSourceViewer.getDocument();
+				try {
+					int currentLine= fBracketHoverRegionFirstLine;
+					int replaceStartOffset= -1;
+					int linesToRemove= 0;
+					int lineShift= 0;
+					for (; currentLine <= fBacketHoverRegionLastLine; currentLine++) {
+						if (!keptLines.remove(Integer.valueOf(currentLine))) { // line to be replaced
+							if (replaceStartOffset == -1) {
+								replaceStartOffset= document.getLineInformation(currentLine - lineShift).getOffset();
+							}
+							linesToRemove++;
+						} else { // kept line
+							if (replaceStartOffset != -1) {
+								document.replace(replaceStartOffset, document.getLineInformation(currentLine - lineShift).getOffset() - 1 - replaceStartOffset, JavaHoverMessages.JavaSourceHover_skippedLinesSymbol);
+								replaceStartOffset= -1;
+								lineShift+= linesToRemove - 1;
+								linesToRemove= 0;
+							}
+						}
+					}
+					if (replaceStartOffset != -1) {
+						// replace remaining lines
+						document.replace(replaceStartOffset, document.getLength() - replaceStartOffset, JavaHoverMessages.JavaSourceHover_skippedLinesSymbol);
+					}
+				} catch (BadLocationException e) {
+					JavaPlugin.log(e);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Java source information input supporting semantic coloring for text blocks hover
+	 *
+	 * @since 3.28
+	 */
+	static class JavaTextBlockSourceInformationInput extends JavaSourceSemanticInformationInput {
+
+		JavaTextBlockSourceInformationInput(String hoverInfo) {
+			super(null, hoverInfo, new SourceRange(4, hoverInfo.length())); // 3 quote characters + 1 new line character
+		}
+
+		@Override
+		public ITypeRoot getViewerContentTypeRoot() {
+			return null;
+		}
+
+		@Override
+		String getViewerContent() {
+			// add new lines with 3 quote characters as 1st and last line (out of visible region) to have text rendered with text block color
+			return "\"\"\"\n" + getHoverInfo() +"\n\"\"\"";  //$NON-NLS-1$//$NON-NLS-2$
+		}
+
+		@Override
+		public boolean isSemanticColoring() {
+			// replace text and set visible region
+			super.isSemanticColoring();
+			// don't trigger semantic coloring job since viewer already renders the content with proper color
+			return false;
+		}
+
+		@Override
+		public void postSemanticColoring() {
+			// no-op
+		}
+	}
+
 	@Override
 	public Object getHoverInfo2(ITextViewer textViewer, IRegion hoverRegion) {
 		String hoverInfoString= getHoverInfo(textViewer, hoverRegion);
 		if (hoverInfoString == null) {
 			return null;
 		}
-		if (fJavaElement == null) {
-			return hoverInfoString;
+		try {
+			if (fJavaElement != null) {
+				if (JavaModelUtil.isModule(fJavaElement)) {
+					// pre-semantic coloring behavior
+					return new JavaSourceInformationInput(fJavaElement, hoverInfoString);
+				}
+				// element hover (source may be from other compilation unit)
+				return new JavaElementSourceInformationInput(hoverInfoString, fJavaElement);
+			}
+			if (fKeptLines != null && !fKeptLines.isEmpty()) {
+				// bracket hover (source from visible editor)
+				return new JavaBracketSourceInformationInput(hoverInfoString, textViewer.getDocument(), fNodeRange, fKeptLines);
+			}
+			// text block hover (source from visible editor)
+			return new JavaTextBlockSourceInformationInput(hoverInfoString);
+		} catch (Exception e) {
+			JavaPlugin.log(e);
+			// pre-semantic coloring behavior
+			return new JavaSourceInformationInput(fJavaElement, hoverInfoString);
 		}
-		return new JavaSourceInformationInput(fJavaElement, hoverInfoString);
 	}
 
 	@Override
@@ -142,9 +455,11 @@ public class JavaSourceHover extends AbstractJavaEditorTextHover {
 
 		fUpwardShiftInLines= 0;
 		fBracketHoverStatus= null;
+		fNodeRange= null;
+		fKeptLines= new ArrayList<>(16);
 
 		if (result == null || result.length == 0) {
-			String val = getBracketHoverInfo(textViewer, region);
+			String val= getBracketHoverInfo(textViewer, region);
 			if (val == null) {
 				return getTextBlockHoverInfo(textViewer, region);
 			}
@@ -236,13 +551,14 @@ public class JavaSourceHover extends AbstractJavaEditorTextHover {
 				nodeStart= node.getStartPosition();
 				nodeLength= ASTNodes.getExclusiveEnd(bracketNode) - nodeStart;
 			}
+			fNodeRange= new SourceRange(nodeStart, nodeLength);
 
-			int line1= document.getLineOfOffset(nodeStart);
-			int sourceOffset= document.getLineOffset(line1);
-			int line2= document.getLineOfOffset(nodeStart + nodeLength);
+			int nodeStartLine= document.getLineOfOffset(nodeStart);
+			int startLineOffset= document.getLineOffset(nodeStartLine);
+			int nodeEndLine= document.getLineOfOffset(nodeStart + nodeLength);
 			int hoveredLine= document.getLineOfOffset(offset);
-			if (line2 > hoveredLine)
-				line2= hoveredLine;
+			if (nodeEndLine > hoveredLine)
+				nodeEndLine= hoveredLine;
 
 			//check if line1 is visible
 			final int[] topIndex= new int[1];
@@ -262,29 +578,29 @@ public class JavaSourceHover extends AbstractJavaEditorTextHover {
 
 			display.syncExec(() -> topIndex[0]= textViewer.getTopIndex());
 
-			int topLine= topIndex[0];
-			if (topLine == -1)
+			int topVisibleLine= topIndex[0];
+			if (topVisibleLine == -1)
 				return null;
 			int noOfSourceLines;
 			IRegion endLine;
 			int skippedLines= 0;
-			int wLine1= ((JavaSourceViewer) textViewer).modelLine2WidgetLine(line1);
-			int wLine2= ((JavaSourceViewer) textViewer).modelLine2WidgetLine(line2);
-			if ((line1 < topLine) || (wLine1 != -1 && (wLine2 - wLine1 != line2 - line1))) {
+			int wNodeStartLine= ((JavaSourceViewer) textViewer).modelLine2WidgetLine(nodeStartLine);
+			int wNodeEndLine= ((JavaSourceViewer) textViewer).modelLine2WidgetLine(nodeEndLine);
+			if ((nodeStartLine < topVisibleLine) || (wNodeStartLine != -1 && (wNodeEndLine - wNodeStartLine != nodeEndLine - nodeStartLine))) {
 				// match not visible or content is folded - see bug 399997
 				if (isElsePart) {
 					return getBracketHoverInfo((IfStatement) node, bracketNode, document, editorInput, delim); // see bug 377141, 201850
 				}
 				noOfSourceLines= 3;
-				if ((line2 - line1) < noOfSourceLines) {
-					noOfSourceLines= line2 - line1;
+				if ((nodeEndLine - nodeStartLine) < noOfSourceLines) {
+					noOfSourceLines= nodeEndLine - nodeStartLine;
 				}
-				skippedLines= Math.abs(line2 - line1 - noOfSourceLines);
+				skippedLines= Math.abs(nodeEndLine - nodeStartLine - noOfSourceLines);
 				if (skippedLines == 1) {
 					noOfSourceLines++;
 					skippedLines= 0;
 				}
-				endLine= document.getLineInformation(line1 + noOfSourceLines);
+				endLine= document.getLineInformation(nodeStartLine + noOfSourceLines);
 				fUpwardShiftInLines= noOfSourceLines;
 				if (skippedLines > 0) {
 					fBracketHoverStatus= Messages.format(JavaHoverMessages.JavaSourceHover_skippedLines, Integer.valueOf(skippedLines));
@@ -295,8 +611,9 @@ public class JavaSourceHover extends AbstractJavaEditorTextHover {
 			if (fUpwardShiftInLines == 0)
 				return null;
 
-			int sourceLength= (endLine.getOffset() + endLine.getLength()) - sourceOffset;
-			String source= document.get(sourceOffset, sourceLength);
+			IntStream.range(nodeStartLine, nodeStartLine + noOfSourceLines).boxed().forEach(fKeptLines::add);
+			int sourceLength= (endLine.getOffset() + endLine.getLength()) - startLineOffset;
+			String source= document.get(startLineOffset, sourceLength);
 			String[] sourceLines= getTrimmedSource(source, editorInput);
 			if (sourceLines == null)
 				return null;
@@ -339,17 +656,17 @@ public class JavaSourceHover extends AbstractJavaEditorTextHover {
 		int nodeStart= ifNode.getStartPosition();
 		while (currentStatement != null) {
 			int nodeLength= ASTNodes.getExclusiveEnd(currentStatement) - nodeStart;
-			int line1= document.getLineOfOffset(nodeStart);
-			int sourceOffset= document.getLineOffset(line1);
-			int line2= document.getLineOfOffset(nodeStart + nodeLength);
-			int line3= line2;
+			int nodeStartLine= document.getLineOfOffset(nodeStart);
+			int startLineOffset= document.getLineOffset(nodeStartLine);
+			int nodeEndLine= document.getLineOfOffset(nodeStart + nodeLength);
+			int nextElseLine= nodeEndLine;
 			if (currentStatement != bracketNode && ifNode != null && ifNode.getElseStatement() != null) {
 				int elseStartOffset= getNextElseOffset(ifNode.getThenStatement(), editorInput);
 				if (elseStartOffset != -1) {
-					line3= document.getLineOfOffset(elseStartOffset); // next 'else'
+					nextElseLine= document.getLineOfOffset(elseStartOffset); // next 'else'
 				}
 			}
-			int noOfTotalLines= (line2 == line3) ? (line2 - line1) : (line2 - line1 + 1);
+			int noOfTotalLines= (nodeEndLine == nextElseLine) ? (nodeEndLine - nodeStartLine) : (nodeEndLine - nodeStartLine + 1);
 			int noOfSourceLines= 3;
 
 			if (noOfTotalLines < noOfSourceLines) {
@@ -362,9 +679,10 @@ public class JavaSourceHover extends AbstractJavaEditorTextHover {
 			}
 
 			if (noOfSourceLines > 0) {
-				IRegion endLine= document.getLineInformation(line1 + noOfSourceLines - 1);
-				int sourceLength= (endLine.getOffset() + endLine.getLength()) - sourceOffset;
-				String source= document.get(sourceOffset, sourceLength);
+				IntStream.range(nodeStartLine, nodeStartLine + noOfSourceLines).boxed().forEach(fKeptLines::add);
+				IRegion endLine= document.getLineInformation(nodeStartLine + noOfSourceLines - 1);
+				int sourceLength= (endLine.getOffset() + endLine.getLength()) - startLineOffset;
+				String source= document.get(startLineOffset, sourceLength);
 				String[] sourceLines= getTrimmedSource(source, editorInput);
 				if (sourceLines == null)
 					return null;
@@ -575,7 +893,7 @@ public class JavaSourceHover extends AbstractJavaEditorTextHover {
 			if (editor instanceof IWorkbenchPartOrientation)
 				orientation= ((IWorkbenchPartOrientation) editor).getOrientation();
 
-			return new SourceViewerInformationControl(parent, isResizable, orientation, statusFieldText) {
+			return new SourceViewerInformationControl(parent, editor, isResizable, orientation, statusFieldText) {
 				@Override
 				public void setLocation(Point location) {
 					Point loc= location;
@@ -622,7 +940,7 @@ public class JavaSourceHover extends AbstractJavaEditorTextHover {
 									&& "org.eclipse.jface.text.AbstractHoverInformationControlManager".equals(element.getClassName())) //$NON-NLS-1$
 								return null; //do not enrich bracket hover
 						}
-						return JavaSourceHover.this.createInformationControlCreator(isResizable && !isResizable, statusFieldText, false);
+						return JavaSourceHover.this.createInformationControlCreator(false, statusFieldText, false);
 					} else {
 						return super.getInformationPresenterControlCreator();
 					}
