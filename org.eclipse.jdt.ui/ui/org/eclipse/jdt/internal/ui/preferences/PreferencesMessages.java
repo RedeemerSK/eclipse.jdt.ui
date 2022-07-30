@@ -166,7 +166,6 @@ public final class PreferencesMessages extends NLS {
 	public static String JavaEditorPreferencePage_underline;
 	public static String JavaEditorPreferencePage_enable;
 	public static String JavaEditorPreferencePage_preview;
-	public static String JavaEditorPreferencePage_sourceHoverSemanticColoring;
 	public static String JavaEditorPreferencePage_highlightMatchingBracketAndCaretLocation;
 	public static String JavaEditorPreferencePage_highlightEnclosingBrackets;
 	public static String JavaEditorPreferencePage_highlightMatchingBracket;

@@ -380,8 +380,6 @@ class JavaEditorColoringConfigurationBlock extends AbstractConfigurationBlock {
 	 */
 	private FontMetrics fFontMetrics;
 
-	private Button fHoverSemanticColoringCheckBox;
-
 	public JavaEditorColoringConfigurationBlock(OverlayPreferenceStore store) {
 		super(store);
 
@@ -420,7 +418,6 @@ class JavaEditorColoringConfigurationBlock extends AbstractConfigurationBlock {
 			if (item instanceof SemanticHighlightingColorListItem)
 				overlayKeys.add(new OverlayPreferenceStore.OverlayKey(OverlayPreferenceStore.BOOLEAN, ((SemanticHighlightingColorListItem) item).getEnableKey()));
 		}
-		overlayKeys.add(new OverlayPreferenceStore.OverlayKey(OverlayPreferenceStore.BOOLEAN, PreferenceConstants.EDITOR_SOURCE_HOVER_SEMANTIC_COLORING));
 
 		OverlayPreferenceStore.OverlayKey[] keys= new OverlayPreferenceStore.OverlayKey[overlayKeys.size()];
 		overlayKeys.toArray(keys);
@@ -490,11 +487,6 @@ class JavaEditorColoringConfigurationBlock extends AbstractConfigurationBlock {
 
 	@Override
 	public void initialize() {
-		if (!SemanticHighlightings.isEnabled(getPreferenceStore())) {
-			getPreferenceStore().setValue(PreferenceConstants.EDITOR_SOURCE_HOVER_SEMANTIC_COLORING, false);
-			fHoverSemanticColoringCheckBox.setEnabled(false);
-		}
-
 		super.initialize();
 
 		fTreeViewer.setInput(fListModel);
@@ -786,8 +778,6 @@ class JavaEditorColoringConfigurationBlock extends AbstractConfigurationBlock {
 				}
 			}
 		});
-
-		fHoverSemanticColoringCheckBox= addCheckBox(colorComposite, PreferencesMessages.JavaEditorPreferencePage_sourceHoverSemanticColoring, PreferenceConstants.EDITOR_SOURCE_HOVER_SEMANTIC_COLORING, 0);
 
 		colorComposite.layout();
 

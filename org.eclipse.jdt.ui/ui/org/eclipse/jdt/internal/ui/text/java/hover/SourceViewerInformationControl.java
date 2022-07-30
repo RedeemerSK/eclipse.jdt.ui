@@ -278,12 +278,8 @@ public class SourceViewerInformationControl
 		setupSemanticColoring(store);
 	}
 
-	private boolean isHoverSemanticColoringEnabled(IPreferenceStore preferenceStore) {
-		return SemanticHighlightings.isEnabled(preferenceStore) && preferenceStore.getBoolean(PreferenceConstants.EDITOR_SOURCE_HOVER_SEMANTIC_COLORING);
-	}
-
 	private void setupSemanticColoring(IPreferenceStore preferenceStore) {
-		if (fParentJavaEditor != null && isHoverSemanticColoringEnabled(preferenceStore)) {
+		if (fParentJavaEditor != null && SemanticHighlightings.isEnabled(preferenceStore)) {
 			fSemanticHighlightingManager= new SourceViewerSemanticHighlightingManager();
 			fSemanticHighlightingManager.install(fParentJavaEditor, fViewer, JavaPlugin.getDefault().getJavaTextTools().getColorManager(), preferenceStore);
 		}
