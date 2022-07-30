@@ -513,9 +513,10 @@ public class SemanticHighlightingReconciler implements IJavaReconcilingListener,
 		fEditor= editor;
 		fSourceViewer= sourceViewer;
 
-		if (fEditor instanceof CompilationUnitEditor) {
+		if (fEditor instanceof CompilationUnitEditor
+				&& fEditor.getViewer() == sourceViewer) { // only if source viewer is one for editor (not the case for java source hover)
 			((CompilationUnitEditor)fEditor).addReconcileListener(this);
-		} else if (fEditor == null) {
+		} else if (fEditor != null) {
 			fSourceViewer.addTextInputListener(this);
 			scheduleJob();
 		}
@@ -542,11 +543,15 @@ public class SemanticHighlightingReconciler implements IJavaReconcilingListener,
 		fPresenter= null;
 	}
 
+	protected ITypeRoot getElement() {
+		return fEditor.getInputJavaElement();
+	}
+
 	/**
 	 * Schedule a background job for retrieving the AST and reconciling the Semantic Highlighting model.
 	 */
 	private void scheduleJob() {
-		final ITypeRoot element= fEditor.getInputJavaElement();
+		final ITypeRoot element= getElement();
 
 		synchronized (fJobLock) {
 			final Job oldJob= fJob;

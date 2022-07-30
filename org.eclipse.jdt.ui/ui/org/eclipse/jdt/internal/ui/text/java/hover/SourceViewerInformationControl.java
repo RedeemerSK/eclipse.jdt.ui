@@ -14,7 +14,10 @@
 package org.eclipse.jdt.internal.ui.text.java.hover;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
@@ -44,6 +47,7 @@ import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.resource.JFaceResources;
 
+import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IInformationControl;
@@ -52,14 +56,27 @@ import org.eclipse.jface.text.IInformationControlExtension;
 import org.eclipse.jface.text.IInformationControlExtension2;
 import org.eclipse.jface.text.IInformationControlExtension3;
 import org.eclipse.jface.text.IInformationControlExtension5;
+import org.eclipse.jface.text.IRegion;
+import org.eclipse.jface.text.ITypedRegion;
+import org.eclipse.jface.text.Position;
+import org.eclipse.jface.text.Region;
+import org.eclipse.jface.text.TextPresentation;
 import org.eclipse.jface.text.presentation.IPresentationReconciler;
 import org.eclipse.jface.text.source.ISourceViewer;
 import org.eclipse.jface.text.source.SourceViewer;
 
+import org.eclipse.ui.IEditorPart;
+
 import org.eclipse.ui.texteditor.AbstractTextEditor;
 
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.ISourceRange;
+import org.eclipse.jdt.core.ISourceReference;
+import org.eclipse.jdt.core.ITypeRoot;
+import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.SourceRange;
 
+import org.eclipse.jdt.internal.core.manipulation.util.Strings;
 import org.eclipse.jdt.internal.corext.util.JavaModelUtil;
 
 import org.eclipse.jdt.ui.JavaUI;
@@ -69,7 +86,12 @@ import org.eclipse.jdt.ui.text.IJavaPartitions;
 import org.eclipse.jdt.ui.text.JavaSourceViewerConfiguration;
 
 import org.eclipse.jdt.internal.ui.JavaPlugin;
+import org.eclipse.jdt.internal.ui.javaeditor.EditorUtility;
+import org.eclipse.jdt.internal.ui.javaeditor.JavaEditor;
 import org.eclipse.jdt.internal.ui.javaeditor.JavaSourceViewer;
+import org.eclipse.jdt.internal.ui.javaeditor.SemanticHighlightingManager;
+import org.eclipse.jdt.internal.ui.javaeditor.SemanticHighlightingPresenter;
+import org.eclipse.jdt.internal.ui.javaeditor.SemanticHighlightingReconciler;
 import org.eclipse.jdt.internal.ui.text.SimpleJavaSourceViewerConfiguration;
 import org.eclipse.jdt.internal.ui.text.java.hover.JavaSourceHover.JavaSourceInformationInput;
 
@@ -130,6 +152,11 @@ public class SourceViewerInformationControl
 	private JavaSourceViewerConfiguration fViewerConfiguration;
 	private Map<String, JavaSourceViewerConfiguration> fKindToViewerConfiguration= new HashMap<>();
 
+	private JavaEditor fParentJavaEditor;
+	private SemanticHighlightingManager fSemanticManager;
+	private ITypeRoot fHoverElementTypeRoot;
+	private Consumer<IDocument> fViewerDocumentVisitor;
+
 	/**
 	 * Creates a source viewer information control with the given shell as parent. The given
 	 * styles are applied to the created styled text widget. The status field will
@@ -142,6 +169,23 @@ public class SourceViewerInformationControl
 	 *            or <code>null</code> if the status field should be hidden
 	 */
 	public SourceViewerInformationControl(Shell parent, boolean isResizable, int orientation, String statusFieldText) {
+		this(parent, null, isResizable, orientation, statusFieldText);
+	}
+
+	/**
+	 * Creates a source viewer information control with the given shell as parent. The given
+	 * styles are applied to the created styled text widget. The status field will
+	 * contain the given text or be hidden.
+	 *
+	 * @param parent the parent shell
+	 * @param editor the editor in which source viewer is being displayed
+	 * @param isResizable <code>true</code> if resizable
+	 * @param orientation the orientation
+	 * @param statusFieldText the text to be used in the optional status field
+	 *            or <code>null</code> if the status field should be hidden
+	 */
+	public SourceViewerInformationControl(Shell parent, IEditorPart editor, boolean isResizable, int orientation, String statusFieldText) {
+
 		Assert.isLegal(orientation == SWT.RIGHT_TO_LEFT || orientation == SWT.LEFT_TO_RIGHT || orientation == SWT.NONE);
 		fOrientation= orientation;
 
@@ -177,10 +221,17 @@ public class SourceViewerInformationControl
 			composite.setBackground(fBackgroundColor);
 		}
 
+		IPreferenceStore preferenceStore= null;
+		if (editor instanceof JavaEditor) {
+			fParentJavaEditor= (JavaEditor) editor;
+			preferenceStore= ((JavaSourceViewer) fParentJavaEditor.getViewer()).getPreferenceStore();
+		}
+		if (preferenceStore == null) {
+			preferenceStore= JavaPlugin.getDefault().getCombinedPreferenceStore();
+		}
 		// Source viewer
-		IPreferenceStore store= JavaPlugin.getDefault().getCombinedPreferenceStore();
-		fViewer= new JavaSourceViewer(composite, null, null, false, textStyle, store);
-		fViewerConfiguration= new SimpleJavaSourceViewerConfiguration(JavaPlugin.getDefault().getJavaTextTools().getColorManager(), store, null, IJavaPartitions.JAVA_PARTITIONING, false);
+		fViewer= new JavaSourceViewer(composite, null, null, false, textStyle, preferenceStore);
+		fViewerConfiguration= new SimpleJavaSourceViewerConfiguration(JavaPlugin.getDefault().getJavaTextTools().getColorManager(), preferenceStore, null, IJavaPartitions.JAVA_PARTITIONING, false);
 		fKindToViewerConfiguration.put(SimpleJavaSourceViewerConfiguration.STANDARD, fViewerConfiguration);
 		fViewer.configure(fViewerConfiguration);
 		fViewer.setEditable(false);
@@ -232,6 +283,24 @@ public class SourceViewerInformationControl
 		}
 
 		addDisposeListener(this);
+		installSemanticHighlighting(preferenceStore);
+	}
+
+	private void installSemanticHighlighting(IPreferenceStore preferenceStore) {
+		if (fSemanticManager == null && fParentJavaEditor != null) {
+			fSemanticManager= new SourceViewerSemanticHighlightingManager();
+			fSemanticManager.install(fParentJavaEditor, (JavaSourceViewer) fViewer, JavaPlugin.getDefault().getJavaTextTools().getColorManager(), preferenceStore);
+		}
+	}
+
+	private void uninstallSemanticHighlighting() {
+		if (fSemanticManager != null) {
+			fSemanticManager.uninstall();
+			fSemanticManager= null;
+		}
+		fParentJavaEditor= null;
+		fHoverElementTypeRoot= null;
+		fViewerDocumentVisitor= null;
 	}
 
 	/**
@@ -316,12 +385,48 @@ public class SourceViewerInformationControl
 	@Override
 	public void setInput(Object input) {
 		String content= null;
+		JavaSourceInformationInput hoverInput= null;
+		ISourceRange visibleRange= null;
 		if (input instanceof String) {
 			content= (String) input;
 		} else if (input instanceof JavaSourceInformationInput) {
-			content= ((JavaSourceInformationInput) input).getHoverInfo();
+			hoverInput= (JavaSourceInformationInput) input;
+			if (fSemanticManager == null) {
+				// original behavior without semantic highlighting
+				content= hoverInput.getHoverInfo();
+			} else {
+				IJavaElement hoverElement= hoverInput.getJavaElement();
+				IRegion bracketHoverRegion= hoverInput.getBracketRegion();
+				if (hoverElement != null) {
+					IJavaElement parent= hoverElement;
+					while (parent != null && !(parent instanceof ITypeRoot)) {
+						parent= parent.getParent();
+					}
+					if (parent instanceof ITypeRoot) {
+						fHoverElementTypeRoot= (ITypeRoot) parent;
+						try {
+							content= fHoverElementTypeRoot.getSource();
+							if (hoverElement instanceof ISourceReference) {
+								visibleRange= ((ISourceReference) hoverElement).getSourceRange();
+							}
+						} catch (JavaModelException e) {
+							// fall-back to original behavior without semantic highlighting
+							content= hoverInput.getHoverInfo();
+							fHoverElementTypeRoot= null;
+						}
+					}
+				} else if (bracketHoverRegion != null) {
+					fHoverElementTypeRoot= EditorUtility.getEditorInputJavaElement(fParentJavaEditor, false);
+					fViewerDocumentVisitor= hoverInput::visitViewerDocument;
+					content= fParentJavaEditor.getViewer().getDocument().get();
+					visibleRange= new SourceRange(bracketHoverRegion.getOffset(), bracketHoverRegion.getLength());
+				} else {
+					// fall-back to original behavior without semantic highlighting
+					content= hoverInput.getHoverInfo();
+				}
+			}
 		}
-		setInformation(content);
+		setInformation(content, visibleRange);
 
 		if (fShell != null && !fShell.isDisposed()) {
 			Display display= fShell.getDisplay();
@@ -339,14 +444,59 @@ public class SourceViewerInformationControl
 
 	@Override
 	public void setInformation(String content) {
+		setInformation(content, null);
+	}
+
+	private void setInformation(String content, ISourceRange visibleRange) {
 		if (content == null) {
 			fViewer.setInput(null);
 			return;
 		}
 
-		IDocument doc= new Document(content);
+		Document doc= new Document(content);
 		JavaPlugin.getDefault().getJavaTextTools().setupJavaDocumentPartitioner(doc, IJavaPartitions.JAVA_PARTITIONING);
+
+		ITypeRoot hoverElementTypeRoot= fHoverElementTypeRoot;
+		fHoverElementTypeRoot= null; // setInput() triggers SemanticHighlightingReconciler.inputDocumentChanged() -> scheduleJob() that should not do anything just yet
 		fViewer.setInput(doc);
+		fHoverElementTypeRoot= hoverElementTypeRoot;
+
+		if (visibleRange != null) {
+			int offset= visibleRange.getOffset();
+			int lenght= visibleRange.getLength();
+			try {
+				ITypedRegion partition= null;
+				int endOffset= offset + lenght;
+				while (offset < endOffset) { // we should never reach end of visibleRange
+					partition= doc.getPartition(IJavaPartitions.JAVA_PARTITIONING, offset, false);
+					switch (partition.getType()) {
+						case IJavaPartitions.JAVA_DOC:
+						case IJavaPartitions.JAVA_MULTI_LINE_COMMENT:
+							offset+= partition.getLength();
+							lenght-= partition.getLength();
+							break;
+						default:
+							endOffset= offset; // break out from loop
+							break;
+					}
+				}
+				while (Character.isWhitespace(doc.getChar(offset))) {
+					offset++;
+					lenght--;
+				}
+			} catch (Exception ignored) {
+				offset= visibleRange.getOffset();
+				lenght= visibleRange.getLength();
+			}
+			fViewer.setRangeIndication(offset, lenght, true);
+			fViewer.setVisibleRegion(visibleRange.getOffset(), visibleRange.getLength());
+		}
+		if (fSemanticManager != null) {
+			SemanticHighlightingReconciler reconciler= fSemanticManager.getReconciler();
+			if (reconciler != null) {
+				reconciler.refresh(); // triggers SemanticHighlightingReconciler.scheduleJob()
+			}
+		}
 	}
 
 	private void updateViewerConfiguration(IJavaElement input) {
@@ -394,6 +544,7 @@ public class SourceViewerInformationControl
 
 	@Override
 	public final void dispose() {
+		uninstallSemanticHighlighting();
 		if (fShell != null && !fShell.isDisposed())
 			fShell.dispose();
 		else
@@ -588,7 +739,7 @@ public class SourceViewerInformationControl
 	 */
 	@Override
 	public IInformationControlCreator getInformationPresenterControlCreator() {
-		return parent -> new SourceViewerInformationControl(parent, true, fOrientation, null);
+		return parent -> new SourceViewerInformationControl(parent, fParentJavaEditor, true, fOrientation, null);
 	}
 
 	/*
@@ -628,5 +779,63 @@ public class SourceViewerInformationControl
 		gc.dispose();
 
 		return new Point(widthInChars * width, heightInChars * height);
+	}
+
+	private class SourceViewerSemanticHighlightingManager extends SemanticHighlightingManager {
+		@Override
+		protected SemanticHighlightingReconciler createSemanticHighlightingReconciler() {
+			return new SemanticHighlightingReconciler() {
+				@Override
+				protected ITypeRoot getElement() {
+					return fHoverElementTypeRoot;
+				}
+			};
+		}
+
+		@Override
+		protected SemanticHighlightingPresenter createSemanticHighlightingPresenter() {
+			return new SemanticHighlightingPresenter() {
+				@Override
+				public Runnable createUpdateRunnable(TextPresentation textPresentation, List<Position> addedPositions, List<Position> removedPositions) {
+					Runnable parentRunnable= super.createUpdateRunnable(textPresentation, addedPositions, removedPositions);
+					if (parentRunnable == null) {
+						return null;
+					}
+					List<IRegion> trimRegions= new LinkedList<>();
+					if (fHoverElementTypeRoot != null) {
+						try {
+							IDocument document= fViewer.getDocument();
+							IRegion hoverElementRegion= fViewer.getVisibleRegion();
+							String hoverElementSource= document.get(hoverElementRegion.getOffset(), hoverElementRegion.getLength());
+							String[] sourceLines= Strings.convertIntoLines(hoverElementSource);
+							String[] trimmedLines= sourceLines.clone();
+							Strings.trimIndentation(trimmedLines, fHoverElementTypeRoot.getJavaProject());
+							int line= document.getLineOfOffset(hoverElementRegion.getOffset());
+							int offsetShift= 0;
+							for (int i= 0; i < sourceLines.length; i++) {
+								int trimChars= sourceLines[i].indexOf(trimmedLines[i]);
+								if (trimChars > 0) {
+									trimRegions.add(new Region(document.getLineOffset(line) - offsetShift, trimChars));
+									offsetShift+= trimChars;
+								}
+								line++;
+							}
+						} catch (BadLocationException ignored) {}
+					}
+					return () -> {
+						parentRunnable.run(); // applies semantic highlighting
+						try {
+							// trim lines now so that applied semantic highlighting is adjusted as well
+							for (IRegion trimRegion : trimRegions) {
+								fViewer.getDocument().replace(trimRegion.getOffset(), trimRegion.getLength(), ""); //$NON-NLS-1$
+							}
+							if (fViewerDocumentVisitor != null) {
+								fViewerDocumentVisitor.accept(fViewer.getDocument());
+							}
+						} catch (BadLocationException ignored) {}
+					};
+				}
+			};
+		}
 	}
 }

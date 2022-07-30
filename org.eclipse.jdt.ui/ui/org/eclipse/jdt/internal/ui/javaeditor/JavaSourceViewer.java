@@ -408,6 +408,10 @@ public class JavaSourceViewer extends ProjectionViewer implements IPropertyChang
 		}
 	}
 
+	public IPreferenceStore getPreferenceStore() {
+		return fPreferenceStore;
+	}
+
 	/*
 	 * @see org.eclipse.jface.text.source.SourceViewer#createControl(org.eclipse.swt.widgets.Composite, int)
 	 */
