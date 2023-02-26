@@ -380,10 +380,6 @@ class JavaEditorColoringConfigurationBlock extends AbstractConfigurationBlock {
 	 */
 	private FontMetrics fFontMetrics;
 
-	/**
-	 * Check box for full semantic syntax coloring in Java source hover preference
-	 * @since 3.28
-	 */
 	private Button fHoverSemanticColoringCheckBox;
 
 	public JavaEditorColoringConfigurationBlock(OverlayPreferenceStore store) {

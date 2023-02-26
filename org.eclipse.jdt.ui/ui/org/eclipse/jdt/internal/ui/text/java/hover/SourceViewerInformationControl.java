@@ -141,30 +141,15 @@ public class SourceViewerInformationControl
 	private JavaSourceViewerConfiguration fViewerConfiguration;
 	private Map<String, JavaSourceViewerConfiguration> fKindToViewerConfiguration= new HashMap<>();
 
-	/**
-	 * Parent java editor from which source viewer is shown
-	 * @since 3.28
-	 */
+	/** Parent java editor from which source viewer is shown */
 	private JavaEditor fParentJavaEditor;
-	/**
-	 * Semantic highlighting manager doing semantic coloring of source content
-	 * @since 3.28
-	 */
+	/** Semantic highlighting manager doing semantic coloring of source content */
 	private SemanticHighlightingManager fSemanticHighlightingManager;
-	/**
-	 * Java source information input from Java source hover supporting semantic coloring
-	 * @since 3.28
-	 */
+	/** Java source information input from Java source hover for semantic coloring */
 	private JavaSourceSemanticInformationInput fJavaSourceSemanticInformationInput;
-	/**
-	 * Root element passed to semantic highlighting reconciler
-	 * @since 3.28
-	 */
+	/** Root element passed to semantic highlighting reconciler */
 	private ITypeRoot fHoverElementTypeRoot;
-	/**
-	 * Visibility status to apply after semantic coloring is finished
-	 * @since 3.28
-	 */
+	/** Visibility status to apply after semantic coloring is finished */
 	private boolean fDelayedVisible;
 
 	/**

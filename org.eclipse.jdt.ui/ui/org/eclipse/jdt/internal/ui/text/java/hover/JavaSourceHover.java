@@ -113,18 +113,10 @@ public class JavaSourceHover extends AbstractJavaEditorTextHover {
 	 */
 	private IJavaElement fJavaElement;
 
-	/**
-	 * Source range of hovered node within it's origin source content
-	 *
-	 * @since 3.28
-	 */
+	/** Source range of hovered node within it's origin source content */
 	private ISourceRange fNodeRange;
 
-	/**
-	 * Lines of bracket-type node's content to keep not skipped in hover viewer
-	 *
-	 * @since 3.28
-	 */
+	/** Lines of bracket-type node's content to keep not skipped in hover viewer */
 	private List<Integer> fKeptLines;
 
 	static class JavaSourceInformationInput {
