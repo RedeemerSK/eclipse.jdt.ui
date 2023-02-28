@@ -464,7 +464,7 @@ public class SourceViewerInformationControl
 	@Override
 	public void setVisible(boolean visible) {
 		fDelayedVisible= visible;
-		// at this moment viewer size is already computed from final viewer visible text (getHoverInfo())
+		// at this moment viewer size is already computed from final viewer visible text (getHoverInfo()), so we can now replace content (inside isSemanticColoring()) in preparation for semantic coloring
 		if (visible && fJavaSourceSemanticInformationInput != null && fJavaSourceSemanticInformationInput.isSemanticColoring()) {
 			fSemanticHighlightingManager.getReconciler().refresh(); // triggers SemanticHighlightingReconciler.scheduleJob()
 			fHoverElementTypeRoot= null;
@@ -735,6 +735,11 @@ public class SourceViewerInformationControl
 				@Override
 				protected ITypeRoot getElement() {
 					return fHoverElementTypeRoot;
+				}
+
+				@Override
+				protected boolean registerAsEditorReconcilingListener() {
+					return false;
 				}
 			};
 		}

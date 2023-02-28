@@ -536,13 +536,22 @@ public class SemanticHighlightingReconciler implements IJavaReconcilingListener,
 		fEditor= editor;
 		fSourceViewer= sourceViewer;
 
-		if (fEditor instanceof CompilationUnitEditor
-				&& fEditor.getViewer() == sourceViewer) { // only if source viewer is one for editor (not the case for java source hover)
-			((CompilationUnitEditor)fEditor).addReconcileListener(this);
+		if (fEditor instanceof CompilationUnitEditor) {
+			if (registerAsEditorReconcilingListener()) {
+				((CompilationUnitEditor)fEditor).addReconcileListener(this);
+			}
 		} else if (fEditor != null) {
 			fSourceViewer.addTextInputListener(this);
 			scheduleJob();
 		}
+	}
+
+	/**
+	 * Decides if this reconciler should also register itself as a reconciling listener on the editor as part of {@link #install} process.
+	 * @return whether this instance should register itself as a reconciling listener on the editor
+	 */
+	protected boolean registerAsEditorReconcilingListener() {
+		return true;
 	}
 
 	/**
