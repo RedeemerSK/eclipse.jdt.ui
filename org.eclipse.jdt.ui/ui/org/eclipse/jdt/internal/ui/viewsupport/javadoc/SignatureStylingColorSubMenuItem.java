@@ -22,27 +22,27 @@ import org.eclipse.jdt.internal.ui.viewsupport.MenuVisibilityMenuItemsConfigurer
 public class SignatureStylingColorSubMenuItem extends Action implements IMenuCreator, MenuVisibilityMenuItemAction {
 	private final Shell parentShell;
 	private final Supplier<String> javadocContentSupplier;
-	private Menu menu = null;
+	private Menu menu= null;
 
 	public SignatureStylingColorSubMenuItem(Shell parent, Supplier<String> javadocContentSupplier) {
 		super(JavadocStylingMessages.JavadocStyling_colorPreferences_menu, AS_DROP_DOWN_MENU);
-		this.parentShell = parent;
-		this.javadocContentSupplier = javadocContentSupplier;
+		this.parentShell= parent;
+		this.javadocContentSupplier= javadocContentSupplier;
 		setMenuCreator(this);
 	}
 
 	@Override
 	public Menu getMenu(Menu parent) {
-		var content = javadocContentSupplier.get();
+		var content= javadocContentSupplier.get();
 		if (menu == null && content != null) {
-			menu = new Menu(parent);
+			menu= new Menu(parent);
 
 			new ActionContributionItem(new ResetSignatureStylingColorsPreferencesMenuItem()).fill(menu, -1);
 			new Separator().fill(menu, -1);
 
-			int typeParamsReferencesCount = JavaElementLinks.getNumberOfTypeParamsReferences(content);
+			int typeParamsReferencesCount= JavaElementLinks.getNumberOfTypeParamsReferences(content);
 			for (int i= 1; i <= typeParamsReferencesCount; i++) {
-				var item = new ActionContributionItem(new SignatureStylingColorPreferenceMenuItem(
+				var item= new ActionContributionItem(new SignatureStylingColorPreferenceMenuItem(
 						parentShell,
 						JavadocStylingMessages.JavadocStyling_colorPreferences_typeParameterReference,
 						i,
@@ -50,9 +50,9 @@ public class SignatureStylingColorSubMenuItem extends Action implements IMenuCre
 						JavaElementLinks::setColorPreferenceForTypeParamsReference));
 				item.fill(menu, -1);
 			}
-			int typeParamsLevelsCount = JavaElementLinks.getNumberOfTypeParamsLevels(content);
+			int typeParamsLevelsCount= JavaElementLinks.getNumberOfTypeParamsLevels(content);
 			for (int i= 1; i <= typeParamsLevelsCount; i++) {
-				var item = new ActionContributionItem(new SignatureStylingColorPreferenceMenuItem(
+				var item= new ActionContributionItem(new SignatureStylingColorPreferenceMenuItem(
 						parentShell,
 						JavadocStylingMessages.JavadocStyling_colorPreferences_typeParameterLevel,
 						i,
@@ -64,8 +64,8 @@ public class SignatureStylingColorSubMenuItem extends Action implements IMenuCre
 				new ActionContributionItem(new NoSignatureStylingTypeParametersMenuItem()).fill(menu, -1);
 			}
 
-			var typeParamsReferenceIndices = JavaElementLinks.getColorPreferencesIndicesForTypeParamsReference();
-			var typeParamsLevelIndices = JavaElementLinks.getColorPreferencesIndicesForTypeParamsLevel();
+			var typeParamsReferenceIndices= JavaElementLinks.getColorPreferencesIndicesForTypeParamsReference();
+			var typeParamsLevelIndices= JavaElementLinks.getColorPreferencesIndicesForTypeParamsLevel();
 
 			if (typeParamsReferenceIndices[typeParamsReferenceIndices.length - 1] > typeParamsReferencesCount
 					|| typeParamsLevelIndices[typeParamsLevelIndices.length - 1] > typeParamsLevelsCount) {
@@ -99,16 +99,16 @@ public class SignatureStylingColorSubMenuItem extends Action implements IMenuCre
 	public void dispose() {
 		if (menu != null) {
 			menu.dispose();
-			menu = null;
+			menu= null;
 		}
 	}
 
 	@Override
 	public boolean menuShown(MenuEvent e) {
 		if (menu != null) {
-			var parentMenu = ((Menu) e.widget);
+			var parentMenu= ((Menu) e.widget);
 			// jface creates & displays proxies for sub-menus so just modifying items in sub-menu we return won't work, but we have to remove whole sub-menu item from menu
-			var menuItem = Stream.of(parentMenu.getItems())
+			var menuItem= Stream.of(parentMenu.getItems())
 					.filter(mi -> mi.getData() instanceof ActionContributionItem aci && aci.getAction() == this)
 					.findFirst().orElseThrow(() -> new NoSuchElementException(
 							"This " + //$NON-NLS-1$
@@ -118,7 +118,7 @@ public class SignatureStylingColorSubMenuItem extends Action implements IMenuCre
 			menuItem.dispose();
 
 			// re-add the sub-mebu as new menu item (it's OK we don't do ReappearingMenuToolbarAction.addMenuItem() since for sub-menu items following is effectively the same)
-			var item = new ActionContributionItem(this);
+			var item= new ActionContributionItem(this);
 			item.fill(parentMenu, -1);
 		}
 		return false;

@@ -9,7 +9,7 @@ import org.eclipse.swt.browser.LocationListener;
 import org.eclipse.jface.internal.text.html.BrowserInformationControl;
 
 public final class CheckboxInBrowserUtil {
-	private static final Pattern CHECKED_PATERN = Pattern.compile(" *checked(=['\"]\\S*?['\"])? *"); //$NON-NLS-1$
+	private static final Pattern CHECKED_PATERN= Pattern.compile(" *checked(=['\"]\\S*?['\"])? *"); //$NON-NLS-1$
 
 	// not made thread-safe for now since we assume all getText/setText calls are done from display thread
 	public static class BrowserTextAccessor {
@@ -22,7 +22,7 @@ public final class CheckboxInBrowserUtil {
 		}
 
 		public BrowserTextAccessor(Browser browser) {
-			this.browser = browser;
+			this.browser= browser;
 		}
 
 		boolean isInitlaized() {
@@ -31,25 +31,25 @@ public final class CheckboxInBrowserUtil {
 
 		String getText() {
 			if (textCache == null) {
-				textCache = browser.getText();
+				textCache= browser.getText();
 			}
 			return textCache;
 		}
 
 		void setText(String text) {
-			textCache = text;
+			textCache= text;
 		}
 
 		public void applyChanges() {
 			if (textCache != null) {
 				browser.setText(textCache);
-				textCache = null;
+				textCache= null;
 			}
 		}
 
 		private void changing(LocationEvent event) {
 			if (browser == null && event.widget instanceof Browser) {
-				browser = (Browser) event.widget;
+				browser= (Browser) event.widget;
 			}
 		}
 
@@ -80,22 +80,22 @@ public final class CheckboxInBrowserUtil {
 
 	public static void toggleCheckboxInBrowser(BrowserTextAccessor browserAccessor, CheckboxInBrowserLocator locator, boolean enabled) {
 		if (browserAccessor.isInitlaized() && locator instanceof CheckboxInBrowserLocatorImpl) {
-			String html = browserAccessor.getText();
-			var checkboxHtmlFragment = ((CheckboxInBrowserLocatorImpl) locator).checkboxHtmlFragment;
-			var matcher = checkboxHtmlFragment.matcher(html);
+			String html= browserAccessor.getText();
+			var checkboxHtmlFragment= ((CheckboxInBrowserLocatorImpl) locator).checkboxHtmlFragment;
+			var matcher= checkboxHtmlFragment.matcher(html);
 			if (matcher.find()) {
 				matcher.region(matcher.start(), matcher.end()).usePattern(CHECKED_PATERN);
 				if (enabled) {
 					if (!matcher.find()) {
-						int inputFragmentEnd = matcher.regionEnd() - 1;
-						StringBuilder sb = new StringBuilder(html.length() + 8);
+						int inputFragmentEnd= matcher.regionEnd() - 1;
+						StringBuilder sb= new StringBuilder(html.length() + 8);
 						sb.append(html, 0, inputFragmentEnd);
 						sb.append(" checked"); //$NON-NLS-1$
 						sb.append(html, inputFragmentEnd, html.length());
 						browserAccessor.setText(sb.toString());
 					} // else it's already checked in HTML
 				} else if (matcher.find()) {
-					StringBuilder sb = new StringBuilder(html.length() - (matcher.end() - matcher.start()));
+					StringBuilder sb= new StringBuilder(html.length() - (matcher.end() - matcher.start()));
 					sb.append(html, 0, matcher.start());
 					sb.append(html, matcher.end(), html.length());
 					browserAccessor.setText(sb.toString());

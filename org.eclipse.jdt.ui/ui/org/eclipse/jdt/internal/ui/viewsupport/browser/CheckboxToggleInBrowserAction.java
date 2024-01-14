@@ -11,8 +11,8 @@ public abstract class CheckboxToggleInBrowserAction extends Action {
 
 	public CheckboxToggleInBrowserAction(String text, int style, BrowserTextAccessor browserTextAccessor, String checkboxId) {
 		super(text, style);
-		checkboxLocator = CheckboxInBrowserUtil.createCheckboxInBrowserLocator(checkboxId);
-		browserAccessor = browserTextAccessor;
+		checkboxLocator= CheckboxInBrowserUtil.createCheckboxInBrowserLocator(checkboxId);
+		browserAccessor= browserTextAccessor;
 	}
 
 	protected void toggleBrowserCheckbox(boolean enabled) {

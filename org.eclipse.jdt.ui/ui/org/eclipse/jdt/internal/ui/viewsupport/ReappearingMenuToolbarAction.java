@@ -30,7 +30,7 @@ public class ReappearingMenuToolbarAction extends Action implements IMenuCreator
 		super(text, IAction.AS_DROP_DOWN_MENU);
 		setImageDescriptor(image);
 		setHoverImageDescriptor(image);
-		this.actions = actions;
+		this.actions= actions;
 		setId(ReappearingMenuToolbarAction.class.getSimpleName());
 		setMenuCreator(this);
 	}

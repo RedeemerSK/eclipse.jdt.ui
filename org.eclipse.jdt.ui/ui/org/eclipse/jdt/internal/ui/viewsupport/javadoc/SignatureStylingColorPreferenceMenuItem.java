@@ -26,18 +26,18 @@ class SignatureStylingColorPreferenceMenuItem extends Action implements ImageDat
 
 	SignatureStylingColorPreferenceMenuItem(Shell shell, String textPrefix, Integer colorIdx, Function<Integer, RGB> colorPreferenceGetter, BiConsumer<Integer, RGB> colorPreferenceSetter) {
 		super(Messages.format(textPrefix, colorIdx));
-		this.shell = shell;
-		this.colorIdx = colorIdx;
-		this.colorPreferenceGetter = colorPreferenceGetter;
-		this.colorPreferenceSetter = colorPreferenceSetter;
+		this.shell= shell;
+		this.colorIdx= colorIdx;
+		this.colorPreferenceGetter= colorPreferenceGetter;
+		this.colorPreferenceSetter= colorPreferenceSetter;
 		setId(SignatureStylingColorPreferenceMenuItem.class.getSimpleName() + "_" + colorIdx); //$NON-NLS-1$
 		setImageDescriptor(ImageDescriptor.createFromImageDataProvider(this));
 	}
 
 	@Override
 	public ImageData getImageData(int zoom) {
-		Image image = new Image(shell.getDisplay(), 16, 16);
-		GC gc = new GC(image);
+		Image image= new Image(shell.getDisplay(), 16, 16);
+		GC gc= new GC(image);
 
 		gc.setForeground(shell.getDisplay().getSystemColor(SWT.COLOR_WIDGET_BORDER));
 		gc.setBackground(new Color(shell.getDisplay(), getCurrentColor()));
@@ -46,7 +46,7 @@ class SignatureStylingColorPreferenceMenuItem extends Action implements ImageDat
 		gc.drawRectangle(image.getBounds());
 		gc.dispose();
 
-		ImageData data = image.getImageData(zoom);
+		ImageData data= image.getImageData(zoom);
 		image.dispose();
 		return data;
 	}
@@ -57,9 +57,9 @@ class SignatureStylingColorPreferenceMenuItem extends Action implements ImageDat
 
 	@Override
 	public void run() {
-		ColorDialog colorDialog = new ColorDialog(shell);
+		ColorDialog colorDialog= new ColorDialog(shell);
 		colorDialog.setRGB(getCurrentColor());
-		RGB newColor = colorDialog.open();
+		RGB newColor= colorDialog.open();
 		if (newColor != null) {
 			colorPreferenceSetter.accept(colorIdx, newColor);
 		}

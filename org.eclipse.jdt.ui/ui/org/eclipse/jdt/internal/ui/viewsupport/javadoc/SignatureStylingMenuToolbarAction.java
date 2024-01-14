@@ -30,7 +30,7 @@ import org.eclipse.jdt.internal.ui.viewsupport.browser.HoverStylingInBrowserMenu
 public class SignatureStylingMenuToolbarAction extends ReappearingMenuToolbarAction implements MouseListeningToolbarItemAction, MenuListener {
 	private final BrowserTextAccessor browserAccessor;
 	private final CheckboxInBrowserLocator previewCheckboxLocator;
-	private boolean mouseExitCalled = false;
+	private boolean mouseExitCalled= false;
 
 	public SignatureStylingMenuToolbarAction(Shell parent, BrowserTextAccessor browserAccessor, String preferenceKeyPrefix, Supplier<String> javadocContentSupplier) {
 		this(JavadocStylingMessages.JavadocStyling_stylingMenu, JavaPluginImages.DESC_ETOOL_JDOC_HOVER_EDIT, browserAccessor,
@@ -43,8 +43,8 @@ public class SignatureStylingMenuToolbarAction extends ReappearingMenuToolbarAct
 	}
 	private SignatureStylingMenuToolbarAction(String text, ImageDescriptor image, BrowserTextAccessor browserAccessor, Action... actions) {
 		super(text, image, actions);
-		this.browserAccessor = browserAccessor;
-		previewCheckboxLocator = CheckboxInBrowserUtil.createCheckboxInBrowserLocator(JavaElementLinks.CHECKBOX_ID_PREVIEW);
+		this.browserAccessor= browserAccessor;
+		previewCheckboxLocator= CheckboxInBrowserUtil.createCheckboxInBrowserLocator(JavaElementLinks.CHECKBOX_ID_PREVIEW);
 		setId(SignatureStylingMenuToolbarAction.class.getSimpleName());
 
 		// make sure actions have loaded preferences for hover to work
@@ -56,8 +56,8 @@ public class SignatureStylingMenuToolbarAction extends ReappearingMenuToolbarAct
 	@Override
 	public Menu getMenu(Control p) {
 		if (!menuCreated()) {
-			Menu retVal = super.getMenu(p);
-			Runnable browserContentSetter = browserAccessor::applyChanges;
+			Menu retVal= super.getMenu(p);
+			Runnable browserContentSetter= browserAccessor::applyChanges;
 			MouseListeningMenuItemsConfigurer.registerForMenu(retVal, browserContentSetter);
 			MenuVisibilityMenuItemsConfigurer.registerForMenu(retVal, browserContentSetter);
 			retVal.addMenuListener(this); // must be last listener, since it commits browser text changes
@@ -69,13 +69,13 @@ public class SignatureStylingMenuToolbarAction extends ReappearingMenuToolbarAct
 
 	@Override
 	public boolean mouseEnter(Event event) {
-		boolean retVal = false;
+		boolean retVal= false;
 		for (Action action : actions) {
 			if (action instanceof HoverStylingInBrowserMenuAction menuAction) {
 				retVal |= menuAction.menuButtonMouseEnter(event);
 			}
 		}
-		mouseExitCalled = false;
+		mouseExitCalled= false;
 		return retVal;
 	}
 
@@ -86,16 +86,16 @@ public class SignatureStylingMenuToolbarAction extends ReappearingMenuToolbarAct
 				menuAction.menuButtonMouseExit(event);
 			}
 		}
-		return mouseExitCalled = true;
+		return mouseExitCalled= true;
 	}
 
 	@Override
 	public void runWithEvent(Event event) {
 		// simulate opening menu with arrow
 		Rectangle bounds= ((ToolItem) event.widget).getBounds();
-		event.x = bounds.x;
-		event.y = bounds.y + bounds.height;
-		event.detail = SWT.ARROW;
+		event.x= bounds.x;
+		event.y= bounds.y + bounds.height;
+		event.detail= SWT.ARROW;
 		((ToolItem) event.widget).notifyListeners(SWT.Selection, event);
 	}
 

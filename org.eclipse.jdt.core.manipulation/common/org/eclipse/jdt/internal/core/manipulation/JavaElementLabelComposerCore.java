@@ -416,12 +416,12 @@ public class JavaElementLabelComposerCore {
 		}
 
 		for (int i= 0; i < nParams; i++) {
-			IAnnotation[] annotations = null;
+			IAnnotation[] annotations= null;
 			if (annotatedParameters != null && i < annotatedParameters.length) {
-				annotations = annotatedParameters[i].getAnnotations();
+				annotations= annotatedParameters[i].getAnnotations();
 			}
-			String type = types == null ? null : types[i];
-			String name = names == null ? null : (isPolymorphic ? names[0] + i : names[i]);
+			String type= types == null ? null : types[i];
+			String name= names == null ? null : (isPolymorphic ? names[0] + i : names[i]);
 			appendMethodParam(method, flags, annotations, type, name, renderVarargs, (i == nParams - 1));
 		}
 	}

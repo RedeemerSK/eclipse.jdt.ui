@@ -51,7 +51,7 @@ public abstract class HoverPreferenceStylingInBrowserAction extends CheckboxTogg
 
 	@Override
 	public void run() {
-		currentPreference = changeStylingPreference(currentPreference);
+		currentPreference= changeStylingPreference(currentPreference);
 		putPreferenceToStore(currentPreference);
 	}
 

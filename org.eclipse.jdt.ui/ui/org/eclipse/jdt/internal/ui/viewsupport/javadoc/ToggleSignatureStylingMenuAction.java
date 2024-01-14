@@ -27,10 +27,10 @@ public class ToggleSignatureStylingMenuAction extends HoverStylingInBrowserMenuA
 		super(text, browserAccessor, checkboxId);
 		this.stylingPreferenceGetter= preferenceGetter;
 		this.stylingPreferenceSaver= preferenceSaver;
-		this.preferenceKeyPrefix = preferenceKeyPrefix;
-		this.preferenceOffImage = toggleOffImage;
-		this.preferenceAlwaysImage = toggleOnImage;
-		this.preferenceHoverImage = preferenceHoverImage;
+		this.preferenceKeyPrefix= preferenceKeyPrefix;
+		this.preferenceOffImage= toggleOffImage;
+		this.preferenceAlwaysImage= toggleOnImage;
+		this.preferenceHoverImage= preferenceHoverImage;
 		loadCurentPreference();
 		setId(id);
 	}
@@ -43,7 +43,7 @@ public class ToggleSignatureStylingMenuAction extends HoverStylingInBrowserMenuA
 					case HOVER ->  preferenceHoverImage;
 					case ALWAYS -> preferenceAlwaysImage;
 				});
-		String preference = switch (currentPreference) {
+		String preference= switch (currentPreference) {
 			case OFF -> JavadocStylingMessages.JavadocStyling_stylingTooltip_preference_off;
 			case HOVER -> JavadocStylingMessages.JavadocStyling_stylingTooltip_preference_hover;
 			case ALWAYS -> JavadocStylingMessages.JavadocStyling_stylingTooltip_preference_always;

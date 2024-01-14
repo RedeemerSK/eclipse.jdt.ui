@@ -21,7 +21,7 @@ public final class MenuVisibilityMenuItemsConfigurer {
 
 		private MenuListenerImpl(Menu menu, Runnable postHandleEventAction) {
 			this.menu= menu;
-			this.postHandleEventAction = postHandleEventAction;
+			this.postHandleEventAction= postHandleEventAction;
 		}
 
 		@Override
@@ -35,7 +35,7 @@ public final class MenuVisibilityMenuItemsConfigurer {
 		}
 
 		private void handleEvent(MenuEvent e, BiFunction<MenuVisibilityMenuItemAction, MenuEvent, Boolean> callback) {
-			boolean runPostAction = false;
+			boolean runPostAction= false;
 			for (MenuItem item : menu.getItems()) {
 				if (item.getData() instanceof ActionContributionItem
 						&& ((ActionContributionItem) item.getData()).getAction() instanceof MenuVisibilityMenuItemAction listener) {

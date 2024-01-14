@@ -12,12 +12,12 @@ import org.eclipse.jface.action.ActionContributionItem;
 public final class MouseListeningMenuItemsConfigurer {
 
 	final Runnable postHandleEventAction;
-	MenuItem lastEnteredItem = null;
-	MouseListeningMenuItemAction lastEnteredItemAction = null;
+	MenuItem lastEnteredItem= null;
+	MouseListeningMenuItemAction lastEnteredItemAction= null;
 
 	public static void registerForMenu(Menu menu, Runnable postHandleEventAction) {
-		var instance = new MouseListeningMenuItemsConfigurer(postHandleEventAction);
-		ArmListener listener = instance::handleEvent;
+		var instance= new MouseListeningMenuItemsConfigurer(postHandleEventAction);
+		ArmListener listener= instance::handleEvent;
 		for (MenuItem item : menu.getItems()) {
 			item.addArmListener(listener);
 		}
@@ -25,23 +25,23 @@ public final class MouseListeningMenuItemsConfigurer {
 	}
 
 	private MouseListeningMenuItemsConfigurer(Runnable postHandleEventAction) {
-		this.postHandleEventAction = postHandleEventAction;
+		this.postHandleEventAction= postHandleEventAction;
 	}
 
 	private void handleEvent(ArmEvent event) {
-		var menuItem = (MenuItem) event.widget;
+		var menuItem= (MenuItem) event.widget;
 		if (lastEnteredItem == menuItem) {
 			return;
 		}
-		boolean runPostAction = false;
+		boolean runPostAction= false;
 		if (lastEnteredItemAction != null) {
 			runPostAction |= lastEnteredItemAction.mouseExit(event);
-			lastEnteredItemAction = null;
+			lastEnteredItemAction= null;
 		}
-		lastEnteredItem = menuItem;
+		lastEnteredItem= menuItem;
 		if (menuItem.getData() instanceof ActionContributionItem
 				&& ((ActionContributionItem) menuItem.getData()).getAction() instanceof MouseListeningMenuItemAction) {
-			lastEnteredItemAction = (MouseListeningMenuItemAction) ((ActionContributionItem) menuItem.getData()).getAction();
+			lastEnteredItemAction= (MouseListeningMenuItemAction) ((ActionContributionItem) menuItem.getData()).getAction();
 			runPostAction |= lastEnteredItemAction.mouseEnter(event);
 		}
 		if (postHandleEventAction != null && runPostAction) {
@@ -50,10 +50,10 @@ public final class MouseListeningMenuItemsConfigurer {
 	}
 
 	private void menuHidden(Event e) {
-		boolean runPostAction = false;
+		boolean runPostAction= false;
 		if (lastEnteredItemAction != null) {
-			runPostAction = lastEnteredItemAction.mouseExit(null);
-			lastEnteredItemAction = null;
+			runPostAction= lastEnteredItemAction.mouseExit(null);
+			lastEnteredItemAction= null;
 		}
 		if (postHandleEventAction != null && runPostAction) {
 			postHandleEventAction.run();

@@ -17,20 +17,20 @@ public final class ToolbarVisibilityToolItemsConfigurer {
 	final Runnable postHandleEventAction;
 
 	public static void registerForToolBarManager(ToolBarManager tbm, Runnable postHandleEventAction) {
-		var toolbar = tbm.getControl();
-		var instance = new ToolbarVisibilityToolItemsConfigurer(toolbar, postHandleEventAction);
-		Listener listener = instance::handleEvent;
+		var toolbar= tbm.getControl();
+		var instance= new ToolbarVisibilityToolItemsConfigurer(toolbar, postHandleEventAction);
+		Listener listener= instance::handleEvent;
 		toolbar.getShell().addListener(SWT.Show, listener);
 		toolbar.getShell().addListener(SWT.Hide, listener);
 	}
 
 	private ToolbarVisibilityToolItemsConfigurer(ToolBar toolbar, Runnable postHandleEventAction) {
-		this.toolbar = toolbar;
-		this.postHandleEventAction = postHandleEventAction;
+		this.toolbar= toolbar;
+		this.postHandleEventAction= postHandleEventAction;
 	}
 
 	private void handleEvent(Event event) {
-		boolean runPostAction = false;
+		boolean runPostAction= false;
 		BiFunction<ToolbarVisibilityToolItemAction, Event, Boolean> callback =
 			switch (event.type) {
 				case SWT.Show -> ToolbarVisibilityToolItemAction::toolbarShown;

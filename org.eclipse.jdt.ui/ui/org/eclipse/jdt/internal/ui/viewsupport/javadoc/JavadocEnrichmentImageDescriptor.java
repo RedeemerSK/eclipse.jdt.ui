@@ -12,9 +12,9 @@ class JavadocEnrichmentImageDescriptor extends CompositeImageDescriptor {
 	private final Point size;
 
 	public JavadocEnrichmentImageDescriptor(ImageDescriptor baseImage) {
-		this.baseImage = baseImage;
-		CachedImageDataProvider provider = createCachedImageDataProvider(baseImage);
-		size = new Point(provider.getWidth(), provider.getHeight());
+		this.baseImage= baseImage;
+		CachedImageDataProvider provider= createCachedImageDataProvider(baseImage);
+		size= new Point(provider.getWidth(), provider.getHeight());
 	}
 
 	@Override
