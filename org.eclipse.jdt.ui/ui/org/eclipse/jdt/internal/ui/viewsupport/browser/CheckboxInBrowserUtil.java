@@ -8,8 +8,6 @@ import org.eclipse.swt.browser.LocationListener;
 
 import org.eclipse.jface.internal.text.html.BrowserInformationControl;
 
-import org.eclipse.jdt.internal.ui.JavaPlugin;
-
 public final class CheckboxInBrowserUtil {
 	private static final Pattern CHECKED_PATERN = Pattern.compile(" *checked(=['\"]\\S*?['\"])? *"); //$NON-NLS-1$
 
@@ -97,11 +95,7 @@ public final class CheckboxInBrowserUtil {
 					sb.append(html, matcher.end(), html.length());
 					browserAccessor.setText(sb.toString());
 				} // else it's already not checked in HTML
-			} else {
-				JavaPlugin.logErrorMessage("Unable to locate Javadoc styling checkbox '" //$NON-NLS-1$
-						+ ((CheckboxInBrowserLocatorImpl) locator).checkboxId
-						+ "' in HTML"); //$NON-NLS-1$
-			}
+			} // else browser does not currently display content with styling enhancements
 		}
 	}
 }

@@ -34,6 +34,9 @@ import org.eclipse.swt.browser.LocationListener;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Display;
 
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.util.IPropertyChangeListener;
@@ -120,10 +123,10 @@ public class JavaElementLinks {
 	private static final String CSS_PLACEHOLDER_COLOR = "-COLOR-"; //$NON-NLS-1$
 
 
-	private static String[] CSS_FRAGMENTS_TYPE_PARAMETERS_LEVELS = new String[4];
-	private static String[] CSS_FRAGMENTS_TYPE_PARAMETERS_REFERENCES = new String[4];
-	private static final ReentrantLock CSS_FRAGMENTS_LOCK = new ReentrantLock();
-	private static final IPropertyChangeListener PROPERTY_CHANGE_LISTENER = JavaElementLinks::cssFragmentsCacheResetListener;
+	private static String[] CSS_FRAGMENTS_CACHE_TYPE_PARAMETERS_REFERENCES = new String[4];
+	private static String[] CSS_FRAGMENTS_CACHE_TYPE_PARAMETERS_LEVELS = new String[4];
+	private static final ReentrantLock CSS_FRAGMENTS_CACHE_LOCK = new ReentrantLock();
+	private static final IPropertyChangeListener COLOR_PROPERTIES_CHANGE_LISTENER = JavaElementLinks::cssFragmentsCacheResetListener;
 
 	/**
 	 * A handler is asked to handle links to targets.
@@ -508,9 +511,9 @@ public class JavaElementLinks {
 
 	public static void initDefaultPreferences(IPreferenceStore store) {
 		initDefaultColors(store);
-		store.addPropertyChangeListener(PROPERTY_CHANGE_LISTENER);
+		store.addPropertyChangeListener(COLOR_PROPERTIES_CHANGE_LISTENER);
 		// taking advantage of PREFERENCE_KEY_DARK_MODE_DEFAULT_COLORS change instead of more complicated OSGi event listener
-		store.addPropertyChangeListener(JavaElementLinks::themeChangeListener);
+		store.addPropertyChangeListener(JavaElementLinks::darkThemeChangeListener);
 	}
 
 	public static void initDefaultColors(IPreferenceStore store) {
@@ -557,7 +560,7 @@ public class JavaElementLinks {
 		store.setDefault(keyPrefix + PREFERENCE_KEY_POSTFIX_TYPE_PARAMETERS_LEVELS_COLORING, StylingPreference.OFF.name());
 	}
 
-	private static void themeChangeListener(PropertyChangeEvent event) {
+	private static void darkThemeChangeListener(PropertyChangeEvent event) {
 		if (PREFERENCE_KEY_DARK_MODE_DEFAULT_COLORS.equals(event.getProperty())) {
 			initDefaultColors(preferenceStore());
 			cssFragmentsCacheResetListener(null);
@@ -575,20 +578,20 @@ public class JavaElementLinks {
 		}
 		if (changeOfTypeLevelsColor || changeOfTypeParamsColor) {
 			try {
-				if (CSS_FRAGMENTS_LOCK.tryLock(100, TimeUnit.MILLISECONDS)) {
+				if (CSS_FRAGMENTS_CACHE_LOCK.tryLock(500, TimeUnit.MILLISECONDS)) {
 					try {
 						if (changeOfTypeLevelsColor) {
-							CSS_FRAGMENTS_TYPE_PARAMETERS_LEVELS = new String[4];
+							CSS_FRAGMENTS_CACHE_TYPE_PARAMETERS_LEVELS = new String[4];
 						}
 						if (changeOfTypeParamsColor) {
-							CSS_FRAGMENTS_TYPE_PARAMETERS_REFERENCES = new String[4];
+							CSS_FRAGMENTS_CACHE_TYPE_PARAMETERS_REFERENCES = new String[4];
 						}
 					} finally {
-						CSS_FRAGMENTS_LOCK.unlock()	;
+						CSS_FRAGMENTS_CACHE_LOCK.unlock()	;
 					}
 				}
 			} catch (InterruptedException e1) {
-				JavaPlugin.logErrorMessage("Interrupted while waiting for CSS fragments cache lock"); //$NON-NLS-1$
+				JavaPlugin.logErrorMessage("Interrupted while waiting for CSS fragments cache lock, cache reset unsuccessful"); //$NON-NLS-1$
 			}
 		}
 	}
@@ -934,26 +937,26 @@ public class JavaElementLinks {
 
 		var locked = false;
 		try {
-			locked = CSS_FRAGMENTS_LOCK.tryLock(100, TimeUnit.MILLISECONDS);
+			locked = CSS_FRAGMENTS_CACHE_LOCK.tryLock(100, TimeUnit.MILLISECONDS);
 		} catch (InterruptedException e) {
 			JavaPlugin.logErrorMessage("Interrupted while waiting for CSS fragments cache lock, proceeding without using cache"); //$NON-NLS-1$
 			// no-op
 		}
 		try {
 			if (locked) {
-				if (CSS_FRAGMENTS_TYPE_PARAMETERS_LEVELS.length < maxTypeLevelNo) {
-					CSS_FRAGMENTS_TYPE_PARAMETERS_LEVELS = Arrays.copyOf(CSS_FRAGMENTS_TYPE_PARAMETERS_LEVELS, maxTypeLevelNo);
+				if (CSS_FRAGMENTS_CACHE_TYPE_PARAMETERS_LEVELS.length < maxTypeLevelNo) {
+					CSS_FRAGMENTS_CACHE_TYPE_PARAMETERS_LEVELS = Arrays.copyOf(CSS_FRAGMENTS_CACHE_TYPE_PARAMETERS_LEVELS, maxTypeLevelNo);
 				}
-				if (CSS_FRAGMENTS_TYPE_PARAMETERS_REFERENCES.length < maxTypeParamNo) {
-					CSS_FRAGMENTS_TYPE_PARAMETERS_REFERENCES = Arrays.copyOf(CSS_FRAGMENTS_TYPE_PARAMETERS_REFERENCES, maxTypeParamNo);
+				if (CSS_FRAGMENTS_CACHE_TYPE_PARAMETERS_REFERENCES.length < maxTypeParamNo) {
+					CSS_FRAGMENTS_CACHE_TYPE_PARAMETERS_REFERENCES = Arrays.copyOf(CSS_FRAGMENTS_CACHE_TYPE_PARAMETERS_REFERENCES, maxTypeParamNo);
 				}
 			}
 			var processedUntil = processSection(css, cssContent, 0, CSS_SECTION_START_TYPE_PARAMETERS_LEVELS, CSS_SECTION_END_TYPE_PARAMETERS_LEVELS,
 					PREFERENCE_KEY_PREFIX_TYPE_PARAMETERS_LEVEL_COLOR, maxTypeLevelNo,
-					(locked ? CSS_FRAGMENTS_TYPE_PARAMETERS_LEVELS : null));
+					(locked ? CSS_FRAGMENTS_CACHE_TYPE_PARAMETERS_LEVELS : null));
 			processedUntil = processSection(css, cssContent, processedUntil, CSS_SECTION_START_TYPE_PARAMETERS_REFERENCES, CSS_SECTION_END_TYPE_PARAMETERS_REFERENCES,
 					PREFERENCE_KEY_PREFIX_TYPE_PARAMETERS_REFERENCE_COLOR, maxTypeParamNo,
-					(locked ? CSS_FRAGMENTS_TYPE_PARAMETERS_REFERENCES : null));
+					(locked ? CSS_FRAGMENTS_CACHE_TYPE_PARAMETERS_REFERENCES : null));
 			cssContent.append(css, processedUntil, css.length());
 			return cssContent.toString();
 		} catch (Exception e) {
@@ -961,7 +964,7 @@ public class JavaElementLinks {
 			return css;
 		} finally {
 			if (locked) {
-				CSS_FRAGMENTS_LOCK.unlock();
+				CSS_FRAGMENTS_CACHE_LOCK.unlock();
 			}
 		}
 	}
@@ -1042,23 +1045,32 @@ public class JavaElementLinks {
 
 	public static void resetAllColorPreferencesToDefaults() {
 		var store = preferenceStore();
-		store.removePropertyChangeListener(PROPERTY_CHANGE_LISTENER);
+		store.removePropertyChangeListener(COLOR_PROPERTIES_CHANGE_LISTENER);
 		try {
+			StringBuffer logMessage = new StringBuffer("Following custom color preferences were removed:"); //$NON-NLS-1$
+			RGB customColor = null;
 			for (int i= 1; i <= MAX_COLOR_INDEX; i++) {
 				String key = getColorPreferenceKey(PREFERENCE_KEY_PREFIX_TYPE_PARAMETERS_REFERENCE_COLOR, i);
-				if (store.contains(key)) {
+				if (!store.isDefault(key)) {
+					customColor = PreferenceConverter.getColor(store, key);
+					logMessage.append("\n\t").append(key).append(" = ").append(customColor); //$NON-NLS-1$ //$NON-NLS-2$
 					store.setToDefault(key);
 				}
 			}
 			for (int i= 1; i <= MAX_COLOR_INDEX; i++) {
 				String key = getColorPreferenceKey(PREFERENCE_KEY_PREFIX_TYPE_PARAMETERS_LEVEL_COLOR, i);
-				if (store.contains(key)) {
+				if (!store.isDefault(key)) {
+					customColor = PreferenceConverter.getColor(store, key);
+					logMessage.append("\n\t").append(key).append(" = ").append(customColor); //$NON-NLS-1$ //$NON-NLS-2$
 					store.setToDefault(key);
 				}
 			}
 			cssFragmentsCacheResetListener(null);
+			if (customColor != null) {
+				JavaPlugin.log(new Status(IStatus.INFO, JavaPlugin.getPluginId(), logMessage.toString()));
+			}
 		} finally {
-			store.addPropertyChangeListener(PROPERTY_CHANGE_LISTENER);
+			store.addPropertyChangeListener(COLOR_PROPERTIES_CHANGE_LISTENER);
 		}
 	}
 
