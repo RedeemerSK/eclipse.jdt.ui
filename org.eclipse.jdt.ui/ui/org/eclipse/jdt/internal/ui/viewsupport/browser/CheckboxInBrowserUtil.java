@@ -67,6 +67,11 @@ public final class CheckboxInBrowserUtil {
 			this.checkboxId= checkboxId;
 			this.checkboxHtmlFragment= Pattern.compile("<input [^>]*?id=['\"]" + checkboxId + "['\"][^>]*?>"); //$NON-NLS-1$ //$NON-NLS-2$;
 		}
+
+		@Override
+		public String toString() {
+			return "CheckboxInBrowserLocatorImpl[checkboxId: " + checkboxId + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+		}
 	}
 
 	public static CheckboxInBrowserLocator createCheckboxInBrowserLocator(String checkboxId) {

@@ -75,14 +75,14 @@ public class SignatureStylingColorSubMenuItem extends Action implements IMenuCre
 			for (int i= 0; i < typeParamsReferenceIndices.length; i++) {
 				if (typeParamsReferenceIndices[i] > typeParamsReferencesCount) {
 					new ActionContributionItem(new UnusedColorPreferenceMenuItem(
-							JavadocStylingMessages.JavadocStyling_colorPreferences_typeParameterReference, typeParamsReferenceIndices[i]))
+							JavadocStylingMessages.JavadocStyling_colorPreferences_typeParameterReference, "ref", typeParamsReferenceIndices[i])) //$NON-NLS-1$
 						.fill(menu, -1);
 				}
 			}
 			for (int i= 0; i < typeParamsLevelIndices.length; i++) {
 				if (typeParamsLevelIndices[i] > typeParamsLevelsCount) {
 					new ActionContributionItem(new UnusedColorPreferenceMenuItem(
-							JavadocStylingMessages.JavadocStyling_colorPreferences_typeParameterLevel, typeParamsLevelIndices[i]))
+							JavadocStylingMessages.JavadocStyling_colorPreferences_typeParameterLevel, "lvl", typeParamsLevelIndices[i])) //$NON-NLS-1$
 						.fill(menu, -1);
 				}
 			}
@@ -139,15 +139,15 @@ public class SignatureStylingColorSubMenuItem extends Action implements IMenuCre
 	private static final class NoSignatureStylingTypeParametersMenuItem extends Action {
 		public NoSignatureStylingTypeParametersMenuItem() {
 			super(JavadocStylingMessages.JavadocStyling_colorPreferences_noTypeParameters);
-			setEnabled(false);
 			setId(NoSignatureStylingTypeParametersMenuItem.class.getSimpleName());
+			setEnabled(false);
 		}
 	}
 
 	private static final class UnusedColorPreferenceMenuItem extends Action {
-		public UnusedColorPreferenceMenuItem(String textPrefix, int colorIdx) {
+		public UnusedColorPreferenceMenuItem(String textPrefix, String idPostfix, int colorIdx) {
 			super(Messages.format(textPrefix, colorIdx));
-			setId(UnusedColorPreferenceMenuItem.class.getSimpleName() + "_" + colorIdx); //$NON-NLS-1$
+			setId(UnusedColorPreferenceMenuItem.class.getSimpleName() + "_" + idPostfix + "_" + colorIdx); //$NON-NLS-1$ //$NON-NLS-2$
 			setToolTipText(JavadocStylingMessages.JavadocStyling_colorPreferences_unusedTypeParameter);
 			setEnabled(false);
 		}

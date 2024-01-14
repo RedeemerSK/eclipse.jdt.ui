@@ -19,6 +19,8 @@ import org.eclipse.jface.action.IMenuCreator;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.resource.ImageDescriptor;
 
+import org.eclipse.jdt.internal.ui.JavaPlugin;
+
 public class ReappearingMenuToolbarAction extends Action implements IMenuCreator {
 	protected final Action[] actions;
 	private Menu menu= null;
@@ -53,6 +55,10 @@ public class ReappearingMenuToolbarAction extends Action implements IMenuCreator
 		}
 	}
 
+	protected boolean menuCreated() {
+		return menu != null;
+	}
+
 	@Override
 	public Menu getMenu(Control parent) {
 		if (menu == null) {
@@ -79,7 +85,10 @@ public class ReappearingMenuToolbarAction extends Action implements IMenuCreator
 			menu.setLocation(menuLocation);
 			menu.setVisible(true); // display again after item selection
 		} else {
-			System.err.println("NULL menuLocation"); //$NON-NLS-1$ // TODO remove
+			JavaPlugin.logErrorMessage(
+					"Unable to display " //$NON-NLS-1$
+					+ getClass().getName()
+					+ " again since no previous display location was set"); //$NON-NLS-1$
 		}
 	}
 

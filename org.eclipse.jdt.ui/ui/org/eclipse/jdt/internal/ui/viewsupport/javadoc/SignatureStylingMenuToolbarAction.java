@@ -55,12 +55,16 @@ public class SignatureStylingMenuToolbarAction extends ReappearingMenuToolbarAct
 
 	@Override
 	public Menu getMenu(Control p) {
-		Runnable browserContentSetter = browserAccessor::applyChanges;
-		Menu retVal = super.getMenu(p);
-		MouseListeningMenuItemsConfigurer.registerForMenu(retVal, browserContentSetter);
-		MenuVisibilityMenuItemsConfigurer.registerForMenu(retVal, browserContentSetter);
-		retVal.addMenuListener(this); // must be last listener, since it commits browser text changes
-		return retVal;
+		if (!menuCreated()) {
+			Menu retVal = super.getMenu(p);
+			Runnable browserContentSetter = browserAccessor::applyChanges;
+			MouseListeningMenuItemsConfigurer.registerForMenu(retVal, browserContentSetter);
+			MenuVisibilityMenuItemsConfigurer.registerForMenu(retVal, browserContentSetter);
+			retVal.addMenuListener(this); // must be last listener, since it commits browser text changes
+			return retVal;
+		} else {
+			return super.getMenu(p);
+		}
 	}
 
 	@Override
