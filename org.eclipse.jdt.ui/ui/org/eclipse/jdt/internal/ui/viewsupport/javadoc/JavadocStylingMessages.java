@@ -19,6 +19,7 @@ public class JavadocStylingMessages extends NLS {
 	public static String JavadocStyling_styling_wrapping;
 
 	public static String JavadocStyling_stylingMenu;
+	public static String JavadocStyling_noEnhancementsTooltip;
 	public static String JavadocStyling_colorPreferences_menu;
 	public static String JavadocStyling_colorPreferences_typeParameterReference;
 	public static String JavadocStyling_colorPreferences_typeParameterLevel;

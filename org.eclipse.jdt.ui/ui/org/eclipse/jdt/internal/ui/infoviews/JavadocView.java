@@ -700,6 +700,7 @@ public class JavadocView extends AbstractInfoView {
 					MouseListeningToolItemsConfigurer.registerForToolBarManager((ToolBarManager) tbm, browserAccessor::applyChanges);
 				}
 			};
+			stylingMenuAction.setId("JavadocView.SignatureStylingMenuToolbarAction"); //$NON-NLS-1$
 			tbm.add(stylingMenuAction);
 			tbm.add(new Separator());
 		}
