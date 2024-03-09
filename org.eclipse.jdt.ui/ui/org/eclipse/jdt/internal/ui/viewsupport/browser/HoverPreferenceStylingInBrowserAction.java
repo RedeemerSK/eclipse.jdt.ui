@@ -45,7 +45,7 @@ public abstract class HoverPreferenceStylingInBrowserAction extends CheckboxTogg
 
 	protected abstract StylingPreference changeStylingPreference(StylingPreference oldPreference);
 
-	protected void loadCurentPreference() {
+	public void loadCurentPreference() {
 		currentPreference= getPreferenceFromStore();
 	}
 
@@ -67,8 +67,19 @@ public abstract class HoverPreferenceStylingInBrowserAction extends CheckboxTogg
 
 	@Override
 	public void run() {
+		super.run();
 		currentPreference= changeStylingPreference(currentPreference);
 		putPreferenceToStore(currentPreference);
+	}
+
+	public void onEnhancementsDisabled() {
+		toggleBrowserCheckbox(false);
+	}
+
+	public void onEnhancementsEnabled() {
+		if (currentPreference == StylingPreference.ALWAYS) {
+			toggleBrowserCheckbox(true);
+		}
 	}
 
 }

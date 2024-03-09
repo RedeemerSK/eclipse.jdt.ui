@@ -23,6 +23,7 @@ import org.eclipse.jface.resource.ImageDescriptor;
 
 import org.eclipse.jdt.internal.corext.util.Messages;
 
+import org.eclipse.jdt.internal.ui.viewsupport.ReappearingMenuToolbarAction.IReappearingMenuItem;
 import org.eclipse.jdt.internal.ui.viewsupport.browser.BrowserTextAccessor;
 import org.eclipse.jdt.internal.ui.viewsupport.browser.HoverStylingInBrowserMenuAction;
 
@@ -31,7 +32,7 @@ import org.eclipse.jdt.internal.ui.viewsupport.browser.HoverStylingInBrowserMenu
  * and support mouse hovering and {@link org.eclipse.jdt.internal.ui.viewsupport.browser.HoverPreferenceStylingInBrowserAction.StylingPreference} states
  * persisted in preference store and presented via different icons.
  */
-public class ToggleSignatureStylingMenuAction extends HoverStylingInBrowserMenuAction {
+public class ToggleSignatureStylingMenuAction extends HoverStylingInBrowserMenuAction implements IReappearingMenuItem {
 	final Function<String, StylingPreference> stylingPreferenceGetter;
 	final BiConsumer<String, StylingPreference> stylingPreferenceSaver;
 	final String preferenceKeyPrefix;
