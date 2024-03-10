@@ -13,7 +13,7 @@
 *******************************************************************************/
 package org.eclipse.jdt.internal.ui.viewsupport.javadoc;
 
-import java.util.function.Consumer;
+import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -48,17 +48,17 @@ import org.eclipse.jdt.internal.ui.viewsupport.browser.HoverStylingInBrowserMenu
  * Toolbar item action for building & presenting javadoc styling menu.
  */
 public class SignatureStylingMenuToolbarAction extends ReappearingMenuToolbarAction implements IMouseListeningToolbarItemAction, MenuListener, IBrowserContentChangeListener {
-	private final CheckboxInBrowserToggler previewCheckboxToggler;
 	private final EnhancemnetsToggleAction enableAction= new EnhancemnetsToggleAction();
 	private final Action[] enabledActions= { actions[0], actions[1], actions[2], actions[3], actions[4], enableAction };
 	private final Action[] disabledActions= { enableAction } ;
 	private final Action[] noStylingActions= { new NoStylingEnhancementsAction(), enableAction };
+	private final CheckboxInBrowserToggler previewCheckboxToggler;
 	private final Shell parent;
+	private final Runnable enhancementsToggledTask;
 
 	private boolean mouseExitCalled= false;
-	private boolean enhancementsToggled= false;
 
-	public SignatureStylingMenuToolbarAction(Shell parent, BrowserTextAccessor browserAccessor, String preferenceKeyPrefix, Supplier<String> javadocContentSupplier) {
+	public SignatureStylingMenuToolbarAction(Shell parent, BrowserTextAccessor browserAccessor, String preferenceKeyPrefix, Supplier<String> javadocContentSupplier,  Runnable enhancementsEnabledTask) {
 		super(JavadocStylingMessages.JavadocStyling_stylingMenu, JavaPluginImages.DESC_ETOOL_JDOC_HOVER_EDIT,
 				new ToggleSignatureTypeParametersColoringAction(browserAccessor, preferenceKeyPrefix),
 				new ToggleSignatureTypeLevelsColoringAction(browserAccessor, preferenceKeyPrefix),
@@ -66,7 +66,9 @@ public class SignatureStylingMenuToolbarAction extends ReappearingMenuToolbarAct
 				new ToggleSignatureWrappingAction(browserAccessor, preferenceKeyPrefix),
 				// widget for following action is being removed and re-added repeatedly, see SignatureStylingColorSubMenuItem.menuShown()
 				new SignatureStylingColorSubMenuItem(parent, javadocContentSupplier));
+		Objects.requireNonNull(parent);
 		this.parent= parent;
+		this.enhancementsToggledTask= enhancementsEnabledTask;
 		previewCheckboxToggler= new CheckboxInBrowserToggler(browserAccessor, JavaElementLinks.CHECKBOX_ID_PREVIEW);
 		setId(SignatureStylingMenuToolbarAction.class.getSimpleName());
 		browserAccessor.addContentChangedListener(this); // remove not necessary since lifecycle of this action is the same as that of the browser widget
@@ -150,17 +152,12 @@ public class SignatureStylingMenuToolbarAction extends ReappearingMenuToolbarAct
 
 	@Override
 	public void menuShown(MenuEvent e) {
-		if (enhancementsToggled) {
-			enhancementsToggled= false;
-			applyEnabledState();
-		}
-		toggleBrowserPreviewCheckbox(enableAction.isChecked());
+		toggleBrowserPreviewCheckbox(true);
 		applyBrowserChanges();
 	}
 
 	@Override
 	public void menuHidden(MenuEvent e) {
-		// here we intentionally ignore enableAction.isChecked() to hide preview overlay when disabling enhancements
 		toggleBrowserPreviewCheckbox(false);
 		if (mouseExitCalled) {
 			// mouseExit() is not called after this when menu is being hidden after re-appearing, so trigger applyChanges() here
@@ -188,29 +185,13 @@ public class SignatureStylingMenuToolbarAction extends ReappearingMenuToolbarAct
 		previewCheckboxToggler.getBrowserTextAccessor().applyChanges();
 	}
 
-	private void applyEnabledState() {
-		Consumer<HoverPreferenceStylingInBrowserAction> enabledActionsConsumer;
-		if (enableAction.isChecked()) {
-			loadActionsCurrentPreferences();
-			enabledActionsConsumer= HoverPreferenceStylingInBrowserAction::onEnhancementsEnabled;
-		} else {
-			// we can't reload Javadoc that is already displayed, so we disable all enhancements to get same visual result
-			enabledActionsConsumer= HoverPreferenceStylingInBrowserAction::onEnhancementsDisabled;
-		}
-		Stream.of(enabledActions)
-			.filter(HoverPreferenceStylingInBrowserAction.class::isInstance)
-			.map(HoverPreferenceStylingInBrowserAction.class::cast)
-			.forEach(enabledActionsConsumer);
-		// reAddActionItems() is called from browserContentChanged() executed after this
-	}
-
 	@Override
 	public void setupMenuReopen(ToolBar toolbar) {
 		super.setupMenuReopen(toolbar);
 		toolbar.addDisposeListener(e -> JavaElementLinks.removeStylingConfigurationListener(enableAction));
 	}
 
-	private class EnhancemnetsToggleAction extends Action implements IReappearingMenuItem, IStylingConfigurationListener {
+	private class EnhancemnetsToggleAction extends Action implements IStylingConfigurationListener {
 		public EnhancemnetsToggleAction() {
 			super(JavadocStylingMessages.JavadocStyling_toggle, AS_CHECK_BOX);
 			setChecked(JavaElementLinks.getStylingEnabledPreference());
@@ -218,21 +199,10 @@ public class SignatureStylingMenuToolbarAction extends ReappearingMenuToolbarAct
 
 		@Override
 		public void run() {
-			if (isChecked()) {
-				JavaElementLinks.setStylingEnabledPreference(true);
-				// do changes in menuShown() that is the last callback executed in listeners execution cascade executed by SWT display thread
-				enhancementsToggled= true;
-			} else {
-				JavaElementLinks.setStylingEnabledPreference(false);
-				applyEnabledState();
-				toggleBrowserPreviewCheckbox(false);
-				applyBrowserChanges();
+			JavaElementLinks.setStylingEnabledPreference(isChecked());
+			if (enhancementsToggledTask != null) {
+				enhancementsToggledTask.run();
 			}
-		}
-
-		@Override
-		public boolean reopenMenu() {
-			return isChecked();
 		}
 
 		@Override
@@ -240,8 +210,9 @@ public class SignatureStylingMenuToolbarAction extends ReappearingMenuToolbarAct
 			parent.getDisplay().execute(() -> {
 				if (isChecked() != isEnabled) {
 					setChecked(isEnabled);
-					applyEnabledState();
-					applyBrowserChanges();
+					if (enhancementsToggledTask != null) {
+						enhancementsToggledTask.run();
+					}
 				}
 			});
 		}
