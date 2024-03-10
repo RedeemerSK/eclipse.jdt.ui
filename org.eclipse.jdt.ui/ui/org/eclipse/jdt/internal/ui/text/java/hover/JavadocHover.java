@@ -373,25 +373,27 @@ public class JavadocHover extends AbstractJavaEditorTextHover {
 					tbm.add(openAttachedJavadocAction);
 				}
 
-				var toolbarComposite= tbm.getControl().getParent();
-				GridLayout layout= new GridLayout(4, false);
-				layout.marginHeight= 0;
-				layout.marginWidth= 0;
-				layout.horizontalSpacing= 0;
-				layout.verticalSpacing= 0;
-				toolbarComposite.setLayout(layout);
-
-				ToolBarManager tbmSecondary= new ToolBarManager(SWT.FLAT);
-				tbmSecondary.createControl(toolbarComposite).setLayoutData(new GridData(SWT.END, SWT.BEGINNING, false, false));
-				BrowserTextAccessor browserAccessor= new BrowserTextAccessor(iControl);
-				var stylingMenuAction= new SignatureStylingMenuToolbarAction(parent, browserAccessor, HTML_STYLING_PREFERENCE_KEY_PREFIX,
-						() -> iControl.getInput() == null ? null : iControl.getInput().getHtml(),
-						() -> iControl.setVisible(false)); // close hover viewer on enhancements toggle
-				tbmSecondary.add(stylingMenuAction);
-				tbmSecondary.update(true);
-				stylingMenuAction.setupMenuReopen(tbmSecondary.getControl());
-				MouseListeningToolItemsConfigurer.registerForToolBarManager(tbmSecondary.getControl(), browserAccessor::applyChanges);
-				tbmSecondary.getControl().moveAbove(toolbarComposite.getChildren()[2]); // move to be before resizeCanvas
+				if (JavaElementLinks.STYLING_ENHANCEMENTS_ENABLED) {
+					var toolbarComposite= tbm.getControl().getParent();
+					GridLayout layout= new GridLayout(4, false);
+					layout.marginHeight= 0;
+					layout.marginWidth= 0;
+					layout.horizontalSpacing= 0;
+					layout.verticalSpacing= 0;
+					toolbarComposite.setLayout(layout);
+	
+					ToolBarManager tbmSecondary= new ToolBarManager(SWT.FLAT);
+					tbmSecondary.createControl(toolbarComposite).setLayoutData(new GridData(SWT.END, SWT.BEGINNING, false, false));
+					BrowserTextAccessor browserAccessor= new BrowserTextAccessor(iControl);
+					var stylingMenuAction= new SignatureStylingMenuToolbarAction(parent, browserAccessor, HTML_STYLING_PREFERENCE_KEY_PREFIX,
+							() -> iControl.getInput() == null ? null : iControl.getInput().getHtml(),
+							() -> iControl.setVisible(false)); // close hover viewer on enhancements toggle
+					tbmSecondary.add(stylingMenuAction);
+					tbmSecondary.update(true);
+					stylingMenuAction.setupMenuReopen(tbmSecondary.getControl());
+					MouseListeningToolItemsConfigurer.registerForToolBarManager(tbmSecondary.getControl(), browserAccessor::applyChanges);
+					tbmSecondary.getControl().moveAbove(toolbarComposite.getChildren()[2]); // move to be before resizeCanvas
+				}
 
 				IInputChangedListener inputChangeListener= newInput -> {
 					backAction.update();
@@ -1080,7 +1082,9 @@ public class JavadocHover extends AbstractJavaEditorTextHover {
 			FontData fontData= JFaceResources.getFontRegistry().getFontData(PreferenceConstants.APPEARANCE_JAVADOC_FONT)[0];
 			css= HTMLPrinter.convertTopLevelFont(css, fontData);
 		}
-		css= JavaElementLinks.modifyCssStyleSheet(css, content);
+		if (JavaElementLinks.STYLING_ENHANCEMENTS_ENABLED) {
+			css= JavaElementLinks.modifyCssStyleSheet(css, content);
+		}
 
 		return css;
 	}

@@ -76,6 +76,11 @@ import org.eclipse.jdt.internal.ui.viewsupport.javadoc.JavadocStylingMessages;
 public class JavaElementLinks {
 
 	/**
+	 * Styling enhancements feature flag.
+	 */
+	public static final boolean STYLING_ENHANCEMENTS_ENABLED= true;
+
+	/**
 	 * ID of the checkbox in generated HTML content that toggles formatting inside element labels.
 	 */
 	public static final String CHECKBOX_ID_FORMATTIG= "formattingSwitch"; //$NON-NLS-1$
@@ -204,7 +209,7 @@ public class JavaElementLinks {
 			} else {
 				fElement= member;
 			}
-			if (getStylingEnabledPreference() && stylingPreferenceKeysPrefix != null) {
+			if (STYLING_ENHANCEMENTS_ENABLED && getStylingEnabledPreference() && stylingPreferenceKeysPrefix != null) {
 				noEnhancements= false;
 				enableWrapping= isStylingPreferenceAlways(stylingPreferenceKeysPrefix + PREFERENCE_KEY_POSTFIX_WRAPPING);
 				enableFormatting= isStylingPreferenceAlways(stylingPreferenceKeysPrefix + PREFERENCE_KEY_POSTFIX_FORMATTING);
@@ -568,7 +573,7 @@ public class JavaElementLinks {
 
 	public static void initDefaultPreferences(IPreferenceStore store) {
 		initDefaultColors(store);
-		store.setDefault(PREFERENCE_KEY_ENABLED, true);
+		store.setDefault(PREFERENCE_KEY_ENABLED, STYLING_ENHANCEMENTS_ENABLED);
 		store.addPropertyChangeListener(COLOR_PROPERTIES_CHANGE_LISTENER);
 		// taking advantage of PREFERENCE_KEY_DARK_MODE_DEFAULT_COLORS change instead of more complicated OSGi event listener
 		store.addPropertyChangeListener(JavaElementLinks::propertyChanged);

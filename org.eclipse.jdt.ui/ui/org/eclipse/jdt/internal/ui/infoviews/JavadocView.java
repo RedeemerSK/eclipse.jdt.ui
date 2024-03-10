@@ -693,7 +693,7 @@ public class JavadocView extends AbstractInfoView {
 		tbm.add(fForthAction);
 		tbm.add(new Separator());
 
-		if (fIsUsingBrowserWidget) {
+		if (JavaElementLinks.STYLING_ENHANCEMENTS_ENABLED && fIsUsingBrowserWidget) {
 			BrowserTextAccessor browserAccessor= new BrowserTextAccessor(fBrowser);
 			Runnable viewRefreshTask = () -> {
 				fIgnoringNewInputOverride= true;
