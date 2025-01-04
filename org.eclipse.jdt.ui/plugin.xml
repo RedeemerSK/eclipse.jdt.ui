@@ -7830,4 +7830,28 @@
            file-extensions="class without source">
      </file-association>
   </extension>
+  <extension
+        point="org.eclipse.text.quicksearch.sourceViewers">
+     <viewer
+           class="org.eclipse.jdt.internal.ui.quicksearch.JavaTextViewerCreator"
+           id="org.eclipse.jdt.quicksearch.JavaTextViewerCreator"
+           linkedEditor="org.eclipse.jdt.ui.CompilationUnitEditor">
+     </viewer>
+     <contentTypeBinding
+           contentTypeId="org.eclipse.jdt.core.javaSource"
+           sourceViewerId="org.eclipse.jdt.quicksearch.JavaTextViewerCreator">
+     </contentTypeBinding>
+  </extension>
+  <!--<extension
+        point="org.eclipse.text.quicksearch.sourceViewers">
+     <viewer
+           class="org.eclipse.jdt.internal.ui.quicksearch.JavaSourceViewerCreator"
+           id="org.eclipse.jdt.quicksearch.JavaSourceViewerCreator"
+           linkedEditor="org.eclipse.jdt.ui.CompilationUnitEditor">
+     </viewer>
+     <contentTypeBinding
+           contentTypeId="org.eclipse.jdt.core.javaSource"
+           sourceViewerId="org.eclipse.jdt.quicksearch.JavaSourceViewerCreator">
+     </contentTypeBinding>
+  </extension>-->
 </plugin>
