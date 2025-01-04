@@ -26,6 +26,7 @@ import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.Viewer;
 
 import org.eclipse.jface.text.Document;
+import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.source.SourceViewer;
 
 import org.eclipse.compare.IStreamContentAccessor;
@@ -43,7 +44,7 @@ public class JavaTextViewer extends Viewer {
 	private Object fInput;
 
 
-	JavaTextViewer(Composite parent) {
+	public JavaTextViewer(Composite parent) {
 		fSourceViewer= new SourceViewer(parent, null, SWT.LEFT_TO_RIGHT | SWT.H_SCROLL | SWT.V_SCROLL);
 		JavaTextTools tools= JavaCompareUtilities.getJavaTextTools();
 		if (tools != null) {
@@ -60,6 +61,10 @@ public class JavaTextViewer extends Viewer {
 
 	}
 
+	public SourceViewer getSourceViewer() {
+		return fSourceViewer;
+	}
+
 	@Override
 	public Control getControl() {
 		return fSourceViewer.getControl();
@@ -67,8 +72,11 @@ public class JavaTextViewer extends Viewer {
 
 	@Override
 	public void setInput(Object input) {
-		if (input instanceof IStreamContentAccessor) {
-			Document document= new Document(getString(input));
+		if (input instanceof IStreamContentAccessor sca) {
+			Document document= new Document(getString(sca));
+			JavaCompareUtilities.setupDocument(document);
+			fSourceViewer.setDocument(document);
+		} else if (input instanceof IDocument document) {
 			JavaCompareUtilities.setupDocument(document);
 			fSourceViewer.setDocument(document);
 		}
@@ -97,15 +105,11 @@ public class JavaTextViewer extends Viewer {
 	 * A helper method to retrieve the contents of the given object
 	 * if it implements the IStreamContentAccessor interface.
 	 */
-	private static String getString(Object input) {
-
-		if (input instanceof IStreamContentAccessor) {
-			IStreamContentAccessor sca= (IStreamContentAccessor) input;
-			try {
-				return JavaCompareUtilities.readString(sca);
-			} catch (CoreException ex) {
-				JavaPlugin.log(ex);
-			}
+	private static String getString(IStreamContentAccessor sca) {
+		try {
+			return JavaCompareUtilities.readString(sca);
+		} catch (CoreException ex) {
+			JavaPlugin.log(ex);
 		}
 		return ""; //$NON-NLS-1$
 	}
