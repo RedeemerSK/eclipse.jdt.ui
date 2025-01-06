@@ -25,19 +25,23 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.text.quicksearch.ISourceViewerCreator;
 
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.jface.resource.JFaceResources;
 
 import org.eclipse.jface.text.IDocument;
-import org.eclipse.jface.text.ITextViewer;
+import org.eclipse.jface.text.source.CompositeRuler;
+import org.eclipse.jface.text.source.LineNumberRulerColumn;
+import org.eclipse.jface.text.source.SourceViewer;
 
 import org.eclipse.ui.PlatformUI;
 
 import org.eclipse.ui.texteditor.ChainedPreferenceStore;
 
-import org.eclipse.ui.editors.text.EditorsUI;
+import org.eclipse.jdt.ui.PreferenceConstants;
+import org.eclipse.jdt.ui.text.IJavaPartitions;
 
 import org.eclipse.jdt.internal.ui.JavaPlugin;
 import org.eclipse.jdt.internal.ui.javaeditor.JavaSourceViewer;
-import org.eclipse.jdt.internal.ui.text.PreferencesAdapter;
+import org.eclipse.jdt.internal.ui.text.SimpleJavaSourceViewerConfiguration;
 
 
 /**
@@ -53,28 +57,42 @@ public class JavaSourceViewerCreator implements ISourceViewerCreator {
 	public JavaSourceViewerCreator() {
 		List<IPreferenceStore> stores= new ArrayList<>(3);
 
-		stores.add(JavaPlugin.getDefault().getPreferenceStore());
-		stores.add(new PreferencesAdapter(JavaPlugin.getJavaCorePluginPreferences()));
-		stores.add(EditorsUI.getPreferenceStore());
-		stores.add(PlatformUI.getPreferenceStore());
+		stores.add(JavaPlugin.getDefault().getCombinedPreferenceStore());
+		stores.add(PlatformUI.getPreferenceStore()); // TODO needed ?
 
 		store = new ChainedPreferenceStore(stores.toArray(new IPreferenceStore[stores.size()]));
 	}
 
 	@Override
 	public ISourceViewerHandle createSourceViewer(Composite parent) {
-		var viewer = new JavaSourceViewer(parent, null, null, false, SWT.NONE, store);
+//		var viewer = new JavaTextViewer(parent);
+//		var viewer = new JavaMergeViewer(parent, 0, null);
+//		var viewer = new SourceViewer(parent, null, SWT.LEFT_TO_RIGHT | SWT.H_SCROLL | SWT.V_SCROLL);
+		var viewer = new JavaSourceViewer(parent, new CompositeRuler(), null, false, SWT.H_SCROLL | SWT.V_SCROLL | SWT.READ_ONLY | SWT.MULTI | SWT.BORDER | SWT.FULL_SELECTION, store);
+		viewer.addVerticalRulerColumn(new LineNumberRulerColumn());
+		viewer.configure(new SimpleJavaSourceViewerConfiguration(JavaPlugin.getDefault().getJavaTextTools().getColorManager(), store, null, IJavaPartitions.JAVA_PARTITIONING, false));
+		viewer.setEditable(false);
+		viewer.getTextWidget().setFont(JFaceResources.getFont(PreferenceConstants.EDITOR_TEXT_FONT));
 		return new ISourceViewerHandle() {
+
+			StyleRange[] matchRangers = null;
+
+			{
+				// enrich content based text styling with matches styles
+				getSourceViewer().addTextPresentationListener(p -> p.mergeStyleRanges(matchRangers));
+			}
 
 			@Override
 			public void setViewerInput(IDocument document, StyleRange[] matchRangers, IPath filePath) {
+				this.matchRangers = matchRangers;
 				viewer.setInput(document);
 				applyMatchesStyles(matchRangers);
 			}
 
 			@Override
-			public ITextViewer getSourceViewer() {
+			public SourceViewer getSourceViewer() {
 				return viewer;
+//				return viewer.getSourceViewer();
 			}
 		};
 	}
