@@ -16,27 +16,19 @@ package org.eclipse.jdt.internal.ui.quicksearch;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.widgets.Composite;
 
-import org.eclipse.core.runtime.IPath;
-
 import org.eclipse.text.quicksearch.ISourceViewerCreator;
+import org.eclipse.text.quicksearch.SourceViewerHandle;
+import org.eclipse.text.quicksearch.SourceViewerConfigurer;
+import org.eclipse.text.quicksearch.SourceViewerConfigurer.ISourceViewerConstructor;
 
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.jface.resource.JFaceResources;
-
-import org.eclipse.jface.text.IDocument;
-import org.eclipse.jface.text.source.CompositeRuler;
-import org.eclipse.jface.text.source.LineNumberRulerColumn;
-import org.eclipse.jface.text.source.SourceViewer;
 
 import org.eclipse.ui.PlatformUI;
 
 import org.eclipse.ui.texteditor.ChainedPreferenceStore;
 
-import org.eclipse.jdt.ui.PreferenceConstants;
 import org.eclipse.jdt.ui.text.IJavaPartitions;
 
 import org.eclipse.jdt.internal.ui.JavaPlugin;
@@ -52,7 +44,8 @@ import org.eclipse.jdt.internal.ui.text.SimpleJavaSourceViewerConfiguration;
  */
 public class JavaSourceViewerCreator implements ISourceViewerCreator {
 
-	IPreferenceStore store;
+	private final IPreferenceStore store;
+	private final ISourceViewerConstructor viewerCreator;
 
 	public JavaSourceViewerCreator() {
 		List<IPreferenceStore> stores= new ArrayList<>(3);
@@ -61,39 +54,19 @@ public class JavaSourceViewerCreator implements ISourceViewerCreator {
 		stores.add(PlatformUI.getPreferenceStore()); // TODO needed ?
 
 		store = new ChainedPreferenceStore(stores.toArray(new IPreferenceStore[stores.size()]));
+
+		viewerCreator = (parent, ruler, styles) -> new JavaSourceViewer(parent, ruler, null, false, styles, store);
 	}
 
 	@Override
 	public ISourceViewerHandle createSourceViewer(Composite parent) {
-//		var viewer = new JavaTextViewer(parent);
-//		var viewer = new JavaMergeViewer(parent, 0, null);
-//		var viewer = new SourceViewer(parent, null, SWT.LEFT_TO_RIGHT | SWT.H_SCROLL | SWT.V_SCROLL);
-		var viewer = new JavaSourceViewer(parent, new CompositeRuler(), null, false, SWT.H_SCROLL | SWT.V_SCROLL | SWT.READ_ONLY | SWT.MULTI | SWT.BORDER | SWT.FULL_SELECTION, store);
-		viewer.addVerticalRulerColumn(new LineNumberRulerColumn());
-		viewer.configure(new SimpleJavaSourceViewerConfiguration(JavaPlugin.getDefault().getJavaTextTools().getColorManager(), store, null, IJavaPartitions.JAVA_PARTITIONING, false));
-		viewer.setEditable(false);
-		viewer.getTextWidget().setFont(JFaceResources.getFont(PreferenceConstants.EDITOR_TEXT_FONT));
-		return new ISourceViewerHandle() {
-
-			StyleRange[] matchRangers = null;
-
-			{
-				// enrich content based text styling with matches styles
-				getSourceViewer().addTextPresentationListener(p -> p.mergeStyleRanges(matchRangers));
-			}
-
+		return new SourceViewerHandle(new SourceViewerConfigurer(store, viewerCreator) {
 			@Override
-			public void setViewerInput(IDocument document, StyleRange[] matchRangers, IPath filePath) {
-				this.matchRangers = matchRangers;
-				viewer.setInput(document);
-				applyMatchesStyles(matchRangers);
+			protected void initialize() {
+				super.initialize();
+				fSourceViewer.configure(new SimpleJavaSourceViewerConfiguration(JavaPlugin.getDefault().getJavaTextTools().getColorManager(), fPreferenceStore, null, IJavaPartitions.JAVA_PARTITIONING, false));
 			}
-
-			@Override
-			public SourceViewer getSourceViewer() {
-				return viewer;
-//				return viewer.getSourceViewer();
-			}
-		};
+		}, parent, true);
 	}
+
 }
