@@ -643,19 +643,7 @@ public class SemanticHighlightingReconciler implements IJavaReconcilingListener,
 		if (runnable == null)
 			return;
 
-		JavaEditor editor= fEditor;
-		if (editor == null)
-			return;
-
-		IWorkbenchPartSite site= editor.getSite();
-		if (site == null)
-			return;
-
-		Shell shell= site.getShell();
-		if (shell == null || shell.isDisposed())
-			return;
-
-		Display display= shell.getDisplay();
+		Display display= getDisplay();
 		if (display == null || display.isDisposed())
 			return;
 
@@ -666,6 +654,22 @@ public class SemanticHighlightingReconciler implements IJavaReconcilingListener,
 				runnable.run();
 			}
 		});
+	}
+
+	protected Display getDisplay() {
+		JavaEditor editor= fEditor;
+		if (editor == null)
+			return null;
+
+		IWorkbenchPartSite site= editor.getSite();
+		if (site == null)
+			return null;
+
+		Shell shell= site.getShell();
+		if (shell == null || shell.isDisposed())
+			return null;
+
+		return shell.getDisplay();
 	}
 
 	/**
