@@ -7835,6 +7835,7 @@
      <viewer
            class="org.eclipse.jdt.internal.ui.quicksearch.JavaSourceViewerCreator"
            id="org.eclipse.jdt.quicksearch.JavaSourceViewerCreator"
+           label="%quicksearchViewers.java.label"
            linkedEditor="org.eclipse.jdt.ui.CompilationUnitEditor">
      </viewer>
      <contentTypeBinding

@@ -52,7 +52,7 @@ public class SignatureStylingMenuToolbarAction extends Action implements IMenuCr
 		Objects.requireNonNull(parent);
 		setImageDescriptor(JavaPluginImages.DESC_ETOOL_JDOC_HOVER_EDIT);
 		// SignatureStylingColorSubMenuItem requires top level shell to display native color picker
-		// JavadocView passes to level shell but JavadocHover passes hover's shell
+		// JavadocView passes top level shell but JavadocHover passes hover's shell
 		// (Display.getActiveShell() would not work since JavadocView is created when active shell is startup splash screen shell)
 		Shell topLevelShell = (parent.getParent() instanceof Shell parentShell) ? parentShell : parent;
 		enabledActions= new Action[] {
