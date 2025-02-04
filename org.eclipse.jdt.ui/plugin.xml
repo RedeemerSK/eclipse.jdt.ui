@@ -7831,7 +7831,7 @@
      </file-association>
   </extension>
   <extension
-        point="org.eclipse.text.quicksearch.sourceViewers">
+        point="org.eclipse.text.quicksearch.textViewers">
      <viewer
            class="org.eclipse.jdt.internal.ui.quicksearch.JavaSourceViewerCreator"
            icon="$nl$/icons/full/obj16/jcu_obj.png"
@@ -7841,7 +7841,7 @@
      </viewer>
      <contentTypeBinding
            contentTypeId="org.eclipse.jdt.core.javaSource"
-           sourceViewerId="org.eclipse.jdt.quicksearch.JavaSourceViewerCreator">
+           viewerId="org.eclipse.jdt.quicksearch.JavaSourceViewerCreator">
      </contentTypeBinding>
   </extension>
 </plugin>

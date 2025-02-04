@@ -22,7 +22,7 @@ import org.eclipse.swt.widgets.Display;
 
 import org.eclipse.core.resources.IFile;
 
-import org.eclipse.text.quicksearch.ISourceViewerCreator;
+import org.eclipse.text.quicksearch.ITextViewerCreator;
 import org.eclipse.text.quicksearch.SourceViewerConfigurer;
 import org.eclipse.text.quicksearch.SourceViewerHandle;
 
@@ -56,7 +56,7 @@ import org.eclipse.jdt.internal.ui.text.SimpleJavaSourceViewerConfiguration;
  * constructor can be created via an extension point
  * (this precludes Viewers).
  */
-public class JavaSourceViewerCreator implements ISourceViewerCreator {
+public class JavaSourceViewerCreator implements ITextViewerCreator {
 
 	private static final IPreferenceStore store;
 
@@ -70,7 +70,7 @@ public class JavaSourceViewerCreator implements ISourceViewerCreator {
 	}
 
 	@Override
-	public ISourceViewerHandle createSourceViewer(Composite parent) {
+	public ITextViewerHandle createTextViewer(Composite parent) {
 		return new JavaSourceViewerHandle(parent);
 	}
 
