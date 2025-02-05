@@ -102,8 +102,7 @@ public class JavaTextViewer extends Viewer {
 	}
 
 	/**
-	 * A helper method to retrieve the contents of the given object
-	 * if it implements the IStreamContentAccessor interface.
+	 * A helper method to retrieve the contents of the given stream content accessor.
 	 */
 	private static String getString(IStreamContentAccessor sca) {
 		try {
