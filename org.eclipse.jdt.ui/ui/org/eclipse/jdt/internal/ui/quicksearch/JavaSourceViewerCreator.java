@@ -16,20 +16,19 @@
 package org.eclipse.jdt.internal.ui.quicksearch;
 
 import org.eclipse.swt.custom.StyleRange;
+import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 
 import org.eclipse.core.resources.IFile;
 
 import org.eclipse.text.quicksearch.ITextViewerCreator;
+import org.eclipse.text.quicksearch.ReconcilingAwareSourceViewerHandle;
 import org.eclipse.text.quicksearch.SourceViewerConfigurer;
-import org.eclipse.text.quicksearch.SourceViewerHandle;
 
 import org.eclipse.jface.preference.IPreferenceStore;
 
 import org.eclipse.jface.text.IDocument;
-import org.eclipse.jface.text.ITextPresentationListener;
-import org.eclipse.jface.text.TextPresentation;
 
 import org.eclipse.ui.PlatformUI;
 
@@ -104,40 +103,29 @@ public class JavaSourceViewerCreator implements ITextViewerCreator {
 		}
 	}
 
-	private class JavaSourceViewerHandle extends SourceViewerHandle<JavaSourceViewer>
-		implements ITextPresentationListener {
+	private class JavaSourceViewerHandle extends ReconcilingAwareSourceViewerHandle<JavaSourceViewer> {
 			private final SourceViewerSemanticHighlightingManager fHighlightingManager;
 
 			public JavaSourceViewerHandle(Composite parent) {
-				super(new JavaSourceViewerConfigurer(), parent);
+				super(new JavaSourceViewerConfigurer(), parent, false, false);
 				fHighlightingManager = new SourceViewerSemanticHighlightingManager(parent.getDisplay());
 				fHighlightingManager.install(
 						fDummyJavaEditor,
 						fSourceViewer,
 						JavaPlugin.getDefault().getJavaTextTools().getColorManager(),
 						store);
-				parent.addDisposeListener(e -> {
-					fHighlightingManager.uninstall();
-				});
-				fSourceViewer.addTextPresentationListener(this);
-			}
-
-			// triggered twice, 1st time during executing setInput(), 2nd time from
-			// SemanticHighlightingPresenter.createUpdateRunnable()
-			@Override
-			public void applyTextPresentation(TextPresentation textPresentation) {
-				// replaceStyleRanges() modifies passed ranges so we need to clone
-				var ranges = new StyleRange[fMatchRanges.length];
-				for (int i = 0; i < ranges.length; i++) {
-					ranges[i] = (StyleRange) fMatchRanges[i].clone();
-				}
-				textPresentation.replaceStyleRanges(ranges);
 			}
 
 			@Override
 			public void setViewerInput(IDocument document, StyleRange[] allMatchesStyles, IFile file) {
 				fHighlightingManager.fRootElement = JavaCore.createCompilationUnitFrom(file);
 				super.setViewerInput(document, allMatchesStyles, file);
+			}
+
+			@Override
+			public void widgetDisposed(DisposeEvent e) {
+				super.widgetDisposed(e);
+				fHighlightingManager.uninstall();
 			}
 		}
 
